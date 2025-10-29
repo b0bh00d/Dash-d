@@ -1,0 +1,307 @@
+#include <QDebug>
+
+#include <QTimer>
+
+#include <QLabel>
+#include <QBitmap>
+#include <QPainterPath>
+
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+
+#include "Dashboard.h"
+#include "Domain.h"
+
+Dashboard::Dashboard(bool dark_mode, Orientation orientation, Direction direction, QFrame *parent)
+    : QFrame{parent},
+      m_dark_mode(dark_mode),
+      m_orientation(orientation),
+      m_direction(direction)
+{
+    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);// | Qt::WindowStaysOnTopHint);
+
+    QBoxLayout* my_layout{nullptr};
+    if(orientation == Orientation::Vertical)
+        my_layout = new QVBoxLayout;
+    else
+        my_layout = new QHBoxLayout;
+    my_layout->setMargin(15);
+    my_layout->addStretch();
+    setLayout(my_layout);
+}
+
+// https://forum.qt.io/topic/162168/how-to-round-the-corners-of-a-frameless-qwidget-when-also-applying-acrylic-effects/8
+void Dashboard::paintEvent(QPaintEvent* /*event*/)
+{
+    // Keep the endcaps "pill" shaped regardless of the width/height
+    qreal radius = (m_orientation == Orientation::Vertical) ? m_base_dim.width() * 0.75 : m_base_dim.height() * 0.75;
+
+    // Rounded mask
+    QBitmap bitmap(width(), height());
+    bitmap.fill(Qt::color0);
+    QPainter maskPainter(&bitmap);
+    maskPainter.setRenderHints(QPainter::Antialiasing);
+    QPainterPath maskPath;
+    maskPath.addRoundedRect(rect(), radius, radius);
+    maskPainter.fillPath(maskPath, Qt::color1);
+    setMask(bitmap);
+
+    // Colors
+    QColor BG = m_dark_mode ? QColor(0x2D, 0x2D, 0x2D) : QColor(0xFF, 0xFF, 0xFF);
+    QColor BR = m_dark_mode ? QColor(0x4D, 0x4D, 0x4D) : QColor(0xBD, 0xBD, 0xBD);
+
+    QPainter painter(this);
+    painter.setRenderHints(QPainter::Antialiasing);
+    painter.setBrush(BG);
+    QPen pen(BR);
+    pen.setWidth(1);
+    painter.setPen(pen);
+
+    QPainterPath path;
+    path.addRoundedRect(rect().adjusted(1, 1, -1, -1), radius, radius);
+    painter.drawPath(path);
+}
+
+void Dashboard::enterEvent(QEvent* event)
+{
+    QFrame::enterEvent(event);
+}
+
+void Dashboard::leaveEvent(QEvent* event)
+{
+    QFrame::leaveEvent(event);
+}
+
+void Dashboard::mousePressEvent(QMouseEvent* event)
+{
+    m_left_button = event->button() == Qt::MouseButton::LeftButton;
+    m_right_button = event->button() == Qt::MouseButton::RightButton;
+
+    if(m_left_button)
+    {
+        // Prepare settings for a move
+        auto pos = event->globalPos();
+
+        m_start_pos = QPoint(m_current_pos.x(), m_current_pos.y());
+
+        auto left = m_current_pos.x();
+        auto top = m_current_pos.y();
+
+        m_left_offset = pos.x() - left;
+        m_top_offset = pos.y() - top;
+    }
+
+    QFrame::mousePressEvent(event);
+}
+
+void Dashboard::mouseReleaseEvent(QMouseEvent* event)
+{
+    m_left_button = event->button() == Qt::MouseButton::LeftButton ? false : m_left_button;
+    m_right_button = event->button() == Qt::MouseButton::RightButton ? false : m_right_button;
+
+    const auto pos = event->globalPos();
+
+    m_base_pos = QPoint(pos.x() - m_left_offset, pos.y() - m_top_offset);
+    m_current_pos = m_base_pos;
+
+    emit signal_dash_moved(m_base_pos);
+
+    QFrame::mouseReleaseEvent(event);
+}
+
+void Dashboard::mouseMoveEvent(QMouseEvent* event)
+{
+    if(!m_moving)
+    {
+        if(m_left_button)
+        {
+            // We are now moving
+            m_moving = true;
+        }
+    }
+    else    // We are curently moving
+    {
+        if(!m_left_button)
+            // Not anymore
+            m_moving = false;
+        else
+        {
+            const auto pos = event->globalPos();
+
+            auto left = pos.x() - m_left_offset;
+            auto top = pos.y() - m_top_offset;
+
+            move(left, top);
+        }
+    }
+
+    QFrame::mouseMoveEvent(event);
+}
+
+
+void Dashboard::add_sensor(SensorPtr sensor)
+{
+    auto domain = qobject_cast<Domain*>(sender());
+    auto tooltip = QString("%1::%2").arg(domain->name(), sensor->name());
+
+    if(m_base_pos.isNull())
+    {
+        auto g = geometry();
+
+        m_base_pos = QPoint(g.left(), g.top());
+        m_base_dim = QSize(g.width(), g.height());
+
+        m_current_pos = m_base_pos;
+        m_current_dim = m_base_dim;
+
+        QString image = QStringLiteral(":/images/Empty.png");
+        m_empty_image = (m_orientation == Orientation::Vertical) ? QPixmap(image).scaledToWidth(m_base_dim.width()) : QPixmap(image).scaledToHeight(m_base_dim.height());
+    }
+
+    auto image = Sensor::StateImages[sensor->state()];
+    QPixmap pixmap = (m_orientation == Orientation::Vertical) ? QPixmap(image).scaledToWidth(m_base_dim.width()) : QPixmap(image).scaledToHeight(m_base_dim.height());
+    if(!m_sensor_size)
+        m_sensor_size = (m_orientation == Orientation::Vertical) ? pixmap.height() : pixmap.width();
+
+    auto label = new QLabel();
+    label->setPixmap(pixmap);
+    label->setToolTip(tooltip);
+
+    QBoxLayout* my_layout = reinterpret_cast<QBoxLayout*>(layout());
+    if(m_direction == Direction::Up || m_direction == Direction::Left)
+        my_layout->insertWidget(0, label);
+    else if(m_direction == Direction::Down || m_direction == Direction::Right)
+        my_layout->insertWidget(my_layout->count() - 1, label);
+    else
+        assert(false);
+
+    if(m_labels.isEmpty())
+        show();
+
+    m_labels[sensor->id()] = label;
+
+    // Resize the window to accomdate the new Sensor display (if required)
+    if(m_labels.count() > 1)
+    {
+        const int w = (m_orientation == Orientation::Vertical) ? m_current_dim.width() : m_sensor_size * m_labels.count();
+        const int h = (m_orientation == Orientation::Vertical) ? m_sensor_size * m_labels.count() : m_current_dim.height();
+
+        const int w_delta = abs(w - m_current_dim.width());
+        const int h_delta = abs(h - m_current_dim.height());
+
+        if(m_orientation == Orientation::Vertical && m_direction == Direction::Up)
+        {
+            m_current_pos.setY(m_current_pos.y() - h_delta);
+            move(m_current_pos.x(), m_current_pos.y());
+        }
+        else if(m_orientation == Orientation::Horizontal && m_direction == Direction::Left)
+        {
+            m_current_pos.setX(m_current_pos.x() - w_delta);
+            move(m_current_pos.x(), m_current_pos.y());
+        }
+
+        resize(w, h);
+        m_current_dim = QSize(w, h);
+        repaint();
+    }
+}
+
+void Dashboard::del_sensor(SensorPtr sensor)
+{
+    del_sensor(sensor->id());
+}
+
+void Dashboard::del_sensor(std::uint64_t id)
+{
+    auto label = m_labels[id];
+    m_labels.remove(id);
+
+    auto my_layout = reinterpret_cast<QVBoxLayout*>(layout());
+    my_layout->takeAt(my_layout->indexOf(label));
+    label->deleteLater();
+
+    if(m_labels.isEmpty())
+    {
+        hide();
+        m_current_pos = m_base_pos;
+        m_current_dim = m_base_dim;
+    }
+    else
+    {
+        if(m_labels.count() == 1)
+        {
+            // I don't understand why doing this works instead of
+            // calling resize() immediately, but it does.
+            QTimer::singleShot(0, this, [this]()->void{move(m_base_pos.x(), m_base_pos.y()); resize(m_base_dim.width(), m_base_dim.height());});
+            m_current_dim = m_base_dim;
+        }
+        else
+        {
+            const int w = (m_orientation == Orientation::Vertical) ? m_current_dim.width() : m_sensor_size * m_labels.count();
+            const int h = (m_orientation == Orientation::Vertical) ? m_sensor_size * m_labels.count() : m_current_dim.height();
+
+            const int w_delta = abs(w - m_current_dim.width());
+            const int h_delta = abs(h - m_current_dim.height());
+
+            if(m_orientation == Orientation::Vertical && m_direction == Direction::Up)
+            {
+                m_current_pos.setY(m_current_pos.y() + h_delta);
+                move(m_current_pos.x(), m_current_pos.y());
+            }
+            else if(m_orientation == Orientation::Horizontal && m_direction == Direction::Left)
+            {
+                m_current_pos.setX(m_current_pos.x() + w_delta);
+                move(m_current_pos.x(), m_current_pos.y());
+            }
+
+            resize(w, h);
+            m_current_dim = QSize(w, h);
+        }
+
+        repaint();
+    }
+}
+
+void Dashboard::slot_add_sensor(SensorPtr sensor)
+{
+    add_sensor(sensor);
+}
+
+void Dashboard::slot_remove_sensor(std::uint64_t id)
+{
+    del_sensor(id);
+}
+
+void Dashboard::slot_update_sensor(std::uint64_t id, SensorState state, bool notify)
+{
+    m_target_sensor = m_labels[id];
+
+    QString image = Sensor::StateImages[state];
+    m_next_image = (m_orientation == Orientation::Vertical) ? QPixmap(image).scaledToWidth(m_base_dim.width()) : QPixmap(image).scaledToHeight(m_base_dim.height());
+
+    if(notify)
+    {
+        m_target_sensor->setPixmap(m_empty_image);
+        m_showing_empty = true;
+        m_flash_count = 10;
+        QTimer::singleShot(100, this, &Dashboard::slot_flash_notify);
+    }
+    else
+        m_target_sensor->setPixmap(m_next_image);
+}
+
+void Dashboard::slot_flash_notify()
+{
+    m_flash_count -= 1;
+    if(!m_flash_count)
+    {
+        // We're done
+        m_target_sensor->setPixmap(m_next_image);
+    }
+    else
+    {
+        m_target_sensor->setPixmap(m_showing_empty ? m_next_image: m_empty_image);
+        m_showing_empty = !m_showing_empty;
+        QTimer::singleShot(100, this, &Dashboard::slot_flash_notify);
+    }
+}
