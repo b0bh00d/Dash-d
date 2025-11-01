@@ -53,7 +53,13 @@ private slots:
 
     void        slot_multicast_group_join();
 
-    void        slot_update_settings();
+    void        slot_accept_settings();
+    void        slot_reject_settings();
+
+    void        slot_orientation_vertical();
+    void        slot_orientation_horizontal();
+    void        slot_direction_downright();
+    void        slot_direction_upleft();
 
     void        slot_dash_moved(QPoint pos);
 
@@ -92,6 +98,8 @@ private:    // data members
 
     QPoint      m_dash_pos;
 
+    Dashboard::Orientation  m_orientation{Dashboard::Orientation::Vertical};
+    Dashboard::Direction    m_direction{Dashboard::Direction::Down};
 #ifdef TEST
     int         m_test_count{0};
 #endif

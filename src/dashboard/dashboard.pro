@@ -35,7 +35,7 @@ win32 {
     # }
 }
 
-#DEFINES += TEST
+DEFINES += TEST
 
 SOURCES += \
     ../SharedTypes.cpp \
@@ -57,7 +57,7 @@ HEADERS += \
     Dialog.h
 
 FORMS += \
-    Dialog.ui
+    dialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

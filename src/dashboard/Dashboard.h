@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include <QFrame>
 #include <QLabel>
 
@@ -11,6 +13,9 @@
 #include <QPainter>
 #include <QPaintEvent>
 
+#include <QPropertyAnimation>
+
+#include "Domain.h"
 #include "Sensor.h"
 #include "Types.h"
 
@@ -34,7 +39,7 @@ public:    // typedefs and enums
     };
 
 public:
-    explicit Dashboard(bool dark_mode,
+    explicit Dashboard(bool dark_mode, bool always_on_top,
         Orientation orientation = Orientation::Vertical,
         Direction direction = Direction::Down,
         QFrame *parent = nullptr);
@@ -48,7 +53,7 @@ signals:
 
 public slots:
     void        slot_add_sensor(SensorPtr sensor);
-    void        slot_remove_sensor(std::uint64_t id);
+    void        slot_del_sensor(std::uint64_t id);
     void        slot_update_sensor(std::uint64_t id, SensorState state, bool notify);
 
 protected:  // methods
@@ -62,12 +67,22 @@ protected:  // methods
 private slots:
     void        slot_flash_notify();
 
+    void        slot_add_sensor_animation_complete();
+    void        slot_del_sensor_animation_complete();
+    void        slot_animate_del();
+
 private:    // typedefs and enums
     using LabelMap = QMap<std::uint64_t, QLabel*>;
 
+    using ActionStack = std::tuple<Domain*, Sensor*, int, int>;
+    using ActionMap = std::map<QPropertyAnimation*, ActionStack>;
+
 private:    // methods
+    void        add_sensor(Domain* domain, Sensor* sensor, int w, int h);
+    void        del_sensor();
 
 private:    // data members
+    int         m_margin{15};
     bool        m_dark_mode{true};
 
     Orientation m_orientation{Orientation::Symmetrical};
@@ -100,6 +115,8 @@ private:    // data members
     int         m_left_offset{0};
     int         m_top_offset{0};
     QPoint      m_start_pos;
+
+    ActionMap   m_actions;
 };
 
 using DashboardPtr = QSharedPointer<Dashboard>;

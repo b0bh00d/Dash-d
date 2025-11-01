@@ -9,24 +9,37 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 
-#include "Dashboard.h"
-#include "Domain.h"
+#include <QPropertyAnimation>
+#include <QParallelAnimationGroup>
 
-Dashboard::Dashboard(bool dark_mode, Orientation orientation, Direction direction, QFrame *parent)
+#include "Domain.h"
+#include "Dashboard.h"
+
+Dashboard::Dashboard(bool dark_mode, bool always_on_top, Orientation orientation, Direction direction, QFrame *parent)
     : QFrame{parent},
       m_dark_mode(dark_mode),
       m_orientation(orientation),
       m_direction(direction)
 {
-    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);// | Qt::WindowStaysOnTopHint);
+    auto flags = Qt::Tool | Qt::FramelessWindowHint;
+    if(always_on_top)
+        flags |= Qt::WindowStaysOnTopHint;
+    setWindowFlags(flags);
 
     QBoxLayout* my_layout{nullptr};
+    QSpacerItem* my_spacer{nullptr};
     if(orientation == Orientation::Vertical)
+    {
         my_layout = new QVBoxLayout;
+        my_spacer = new QSpacerItem(20, 16777215, QSizePolicy::Expanding, QSizePolicy::Preferred);
+    }
     else
+    {
         my_layout = new QHBoxLayout;
-    my_layout->setMargin(15);
-    my_layout->addStretch();
+        my_spacer = new QSpacerItem(16777215, 20, QSizePolicy::Expanding, QSizePolicy::Preferred);
+    }
+    my_layout->setMargin(m_margin);
+    my_layout->addSpacerItem(my_spacer);
     setLayout(my_layout);
 }
 
@@ -142,10 +155,10 @@ void Dashboard::mouseMoveEvent(QMouseEvent* event)
 void Dashboard::add_sensor(SensorPtr sensor)
 {
     auto domain = qobject_cast<Domain*>(sender());
-    auto tooltip = QString("%1::%2").arg(domain->name(), sensor->name());
 
     if(m_base_pos.isNull())
     {
+        // Perform first-sensor calculations.
         auto g = geometry();
 
         m_base_pos = QPoint(g.left(), g.top());
@@ -156,54 +169,137 @@ void Dashboard::add_sensor(SensorPtr sensor)
 
         QString image = QStringLiteral(":/images/Empty.png");
         m_empty_image = (m_orientation == Orientation::Vertical) ? QPixmap(image).scaledToWidth(m_base_dim.width()) : QPixmap(image).scaledToHeight(m_base_dim.height());
+        m_sensor_size = (m_orientation == Orientation::Vertical) ? m_empty_image.height() : m_empty_image.width();
     }
+
+    const int w = (m_orientation == Orientation::Vertical) ? m_current_dim.width() : (m_sensor_size + m_margin) * (m_labels.count() + 1);
+    const int h = (m_orientation == Orientation::Vertical) ? (m_sensor_size + m_margin) * (m_labels.count() + 1) : m_current_dim.height();
+
+    const int w_delta = abs(w - m_current_dim.width());
+    const int h_delta = abs(h - m_current_dim.height());
+
+    // Resize the window to accomdate the new Sensor display (if required)
+    if(m_labels.count())
+    {
+        // Animate the movement/resizing of the window
+
+        QPropertyAnimation* animation{nullptr};
+        if(m_orientation == Orientation::Vertical)
+        {
+            if(m_direction == Direction::Up)
+            {
+                // We are moving the window's origin and resizing at the same time
+
+                animation = new QPropertyAnimation(this, "geometry");
+                animation->setStartValue(QRect(m_current_pos.x(), m_current_pos.y(), m_current_dim.width(), m_current_dim.height()));
+                animation->setEndValue(QRect(m_current_pos.x(), m_current_pos.y() - h_delta, m_current_dim.width(), h));
+
+                m_current_pos.setY(m_current_pos.y() - h_delta);
+            }
+            else if(m_direction == Direction::Down)
+            {
+                // We are only resizing the window
+
+                animation = new QPropertyAnimation(this, "geometry");
+                animation->setStartValue(QRect(m_current_pos.x(), m_current_pos.y(), m_current_dim.width(), m_current_dim.height()));
+                animation->setEndValue(QRect(m_current_pos.x(), m_current_pos.y(), m_current_dim.width(), h));
+            }
+            else
+                assert(false);
+        }
+        else if(m_orientation == Orientation::Horizontal)
+        {
+            if(m_direction == Direction::Left)
+            {
+                // We are moving the window's origin and resizing at the same time
+
+                animation = new QPropertyAnimation(this, "geometry");
+                animation->setStartValue(QRect(m_current_pos.x(), m_current_pos.y(), m_current_dim.width(), m_current_dim.height()));
+                animation->setEndValue(QRect(m_current_pos.x() - w_delta, m_current_pos.y(), w, m_current_dim.height()));
+
+                m_current_pos.setX(m_current_pos.x() - w_delta);
+            }
+            else if(m_direction == Direction::Right)
+            {
+                // We are only resizing the window
+                animation = new QPropertyAnimation(this, "geometry");
+                animation->setStartValue(QRect(m_current_pos.x(), m_current_pos.y(), m_current_dim.width(), m_current_dim.height()));
+                animation->setEndValue(QRect(m_current_pos.x(), m_current_pos.y(), w, m_current_dim.height()));
+            }
+            else
+                assert(false);
+        }
+
+        if(animation)
+        {
+            ActionStack items{domain, sensor.data(), w, h};
+            m_actions[animation] = items;
+
+            animation->setDuration(500);
+            animation->setEasingCurve(QEasingCurve::OutSine);
+            connect(animation, &QAbstractAnimation::finished, this, &Dashboard::slot_add_sensor_animation_complete);
+            animation->start();
+        }
+        else
+            assert(false);
+    }
+    else
+        add_sensor(domain, sensor.data(), w, h);
+}
+
+void Dashboard::add_sensor(Domain* domain, Sensor* sensor, int w, int h)
+{
+    auto tooltip = QString("%1::%2").arg(domain->name(), sensor->name());
 
     auto image = Sensor::StateImages[sensor->state()];
     QPixmap pixmap = (m_orientation == Orientation::Vertical) ? QPixmap(image).scaledToWidth(m_base_dim.width()) : QPixmap(image).scaledToHeight(m_base_dim.height());
-    if(!m_sensor_size)
-        m_sensor_size = (m_orientation == Orientation::Vertical) ? pixmap.height() : pixmap.width();
 
     auto label = new QLabel();
     label->setPixmap(pixmap);
     label->setToolTip(tooltip);
 
     QBoxLayout* my_layout = reinterpret_cast<QBoxLayout*>(layout());
-    if(m_direction == Direction::Up || m_direction == Direction::Left)
-        my_layout->insertWidget(0, label);
-    else if(m_direction == Direction::Down || m_direction == Direction::Right)
-        my_layout->insertWidget(my_layout->count() - 1, label);
-    else
-        assert(false);
+    const int count = my_layout->count();
+
+    switch(m_direction)
+    {
+        case Direction::Up:
+            if(count == 1)
+                my_layout->addWidget(label);
+            else
+                my_layout->insertWidget(my_layout->count() - 1, label);
+            break;
+        case Direction::Left:
+            if(count == 1)
+                my_layout->addWidget(label);
+            else
+                my_layout->insertWidget(my_layout->count() - 1, label);
+            break;
+        case Direction::Down:
+            if(count == 1)
+                my_layout->insertWidget(0, label);
+            else
+                my_layout->insertWidget(my_layout->count() - 1, label);
+            break;
+        case Direction::Right:
+            if(count == 1)
+                my_layout->insertWidget(0, label);
+            else
+                my_layout->insertWidget(my_layout->count() - 1, label);
+            break;
+
+        default:
+            assert(false);
+    }
 
     if(m_labels.isEmpty())
         show();
 
     m_labels[sensor->id()] = label;
 
-    // Resize the window to accomdate the new Sensor display (if required)
-    if(m_labels.count() > 1)
-    {
-        const int w = (m_orientation == Orientation::Vertical) ? m_current_dim.width() : m_sensor_size * m_labels.count();
-        const int h = (m_orientation == Orientation::Vertical) ? m_sensor_size * m_labels.count() : m_current_dim.height();
+    m_current_dim = QSize(w, h);
 
-        const int w_delta = abs(w - m_current_dim.width());
-        const int h_delta = abs(h - m_current_dim.height());
-
-        if(m_orientation == Orientation::Vertical && m_direction == Direction::Up)
-        {
-            m_current_pos.setY(m_current_pos.y() - h_delta);
-            move(m_current_pos.x(), m_current_pos.y());
-        }
-        else if(m_orientation == Orientation::Horizontal && m_direction == Direction::Left)
-        {
-            m_current_pos.setX(m_current_pos.x() - w_delta);
-            move(m_current_pos.x(), m_current_pos.y());
-        }
-
-        resize(w, h);
-        m_current_dim = QSize(w, h);
-        repaint();
-    }
+    repaint();
 }
 
 void Dashboard::del_sensor(SensorPtr sensor)
@@ -227,39 +323,7 @@ void Dashboard::del_sensor(std::uint64_t id)
         m_current_dim = m_base_dim;
     }
     else
-    {
-        if(m_labels.count() == 1)
-        {
-            // I don't understand why doing this works instead of
-            // calling resize() immediately, but it does.
-            QTimer::singleShot(0, this, [this]()->void{move(m_base_pos.x(), m_base_pos.y()); resize(m_base_dim.width(), m_base_dim.height());});
-            m_current_dim = m_base_dim;
-        }
-        else
-        {
-            const int w = (m_orientation == Orientation::Vertical) ? m_current_dim.width() : m_sensor_size * m_labels.count();
-            const int h = (m_orientation == Orientation::Vertical) ? m_sensor_size * m_labels.count() : m_current_dim.height();
-
-            const int w_delta = abs(w - m_current_dim.width());
-            const int h_delta = abs(h - m_current_dim.height());
-
-            if(m_orientation == Orientation::Vertical && m_direction == Direction::Up)
-            {
-                m_current_pos.setY(m_current_pos.y() + h_delta);
-                move(m_current_pos.x(), m_current_pos.y());
-            }
-            else if(m_orientation == Orientation::Horizontal && m_direction == Direction::Left)
-            {
-                m_current_pos.setX(m_current_pos.x() + w_delta);
-                move(m_current_pos.x(), m_current_pos.y());
-            }
-
-            resize(w, h);
-            m_current_dim = QSize(w, h);
-        }
-
-        repaint();
-    }
+        QTimer::singleShot(0, this, &Dashboard::slot_animate_del);
 }
 
 void Dashboard::slot_add_sensor(SensorPtr sensor)
@@ -267,7 +331,7 @@ void Dashboard::slot_add_sensor(SensorPtr sensor)
     add_sensor(sensor);
 }
 
-void Dashboard::slot_remove_sensor(std::uint64_t id)
+void Dashboard::slot_del_sensor(std::uint64_t id)
 {
     del_sensor(id);
 }
@@ -304,4 +368,134 @@ void Dashboard::slot_flash_notify()
         m_showing_empty = !m_showing_empty;
         QTimer::singleShot(100, this, &Dashboard::slot_flash_notify);
     }
+}
+
+void Dashboard::slot_add_sensor_animation_complete()
+{
+    auto animation = qobject_cast<QPropertyAnimation*>(sender());
+    animation->deleteLater();
+
+    auto tuple = m_actions[animation];
+    m_actions.erase(animation);
+
+    auto domain = std::get<0>(tuple);
+    auto sensor = std::get<1>(tuple);
+    auto w = std::get<2>(tuple);
+    auto h = std::get<3>(tuple);
+
+    add_sensor(domain, sensor, w, h);
+}
+
+void Dashboard::slot_animate_del()
+{
+    // Deleting a sensor is done a in reverse from adding because we want to visually
+    // remove the avatar from the window first, and THEN animate the window collapsing.
+
+    const int w = (m_orientation == Orientation::Vertical) ? m_current_dim.width() : m_sensor_size * m_labels.count();
+    const int h = (m_orientation == Orientation::Vertical) ? m_sensor_size * m_labels.count() : m_current_dim.height();
+
+    const int w_delta = abs(w - m_current_dim.width());
+    const int h_delta = abs(h - m_current_dim.height());
+
+    // Animate the movement/resizing of the window
+
+    QPropertyAnimation* animation{nullptr};
+    if(m_orientation == Orientation::Vertical)
+    {
+        if(m_direction == Direction::Up)
+        {
+            // We are moving the window's origin and resizing at the same time
+
+            animation = new QPropertyAnimation(this, "geometry");
+            animation->setStartValue(QRect(m_current_pos.x(), m_current_pos.y(), m_current_dim.width(), m_current_dim.height()));
+            animation->setEndValue(QRect(m_current_pos.x(), m_current_pos.y() + h_delta, m_current_dim.width(), h));
+
+            m_current_pos.setY(m_current_pos.y() - h_delta);
+        }
+        else if(m_direction == Direction::Down)
+        {
+            // We are only resizing the window
+
+            animation = new QPropertyAnimation(this, "geometry");
+            animation->setStartValue(QRect(m_current_pos.x(), m_current_pos.y(), m_current_dim.width(), m_current_dim.height()));
+            animation->setEndValue(QRect(m_current_pos.x(), m_current_pos.y(), m_current_dim.width(), h));
+        }
+        else
+            assert(false);
+    }
+    else if(m_orientation == Orientation::Horizontal)
+    {
+        if(m_direction == Direction::Left)
+        {
+            // We are moving the window's origin and resizing at the same time
+
+            animation = new QPropertyAnimation(this, "geometry");
+            animation->setStartValue(QRect(m_current_pos.x(), m_current_pos.y(), m_current_dim.width(), m_current_dim.height()));
+            animation->setEndValue(QRect(m_current_pos.x() + w_delta, m_current_pos.y(), w, m_current_dim.height()));
+
+            m_current_pos.setX(m_current_pos.x() - w_delta);
+        }
+        else if(m_direction == Direction::Right)
+        {
+            // We are only resizing the window
+            animation = new QPropertyAnimation(this, "geometry");
+            animation->setStartValue(QRect(m_current_pos.x(), m_current_pos.y(), m_current_dim.width(), m_current_dim.height()));
+            animation->setEndValue(QRect(m_current_pos.x(), m_current_pos.y(), w, m_current_dim.height()));
+        }
+        else
+            assert(false);
+    }
+
+    if(animation)
+    {
+        // ActionStack items{domain, sensor.data(), w, h};
+        // m_actions[animation] = items;
+
+        animation->setDuration(500);
+        animation->setEasingCurve(QEasingCurve::OutSine);
+        connect(animation, &QAbstractAnimation::finished, this, &Dashboard::slot_del_sensor_animation_complete);
+        animation->start();
+    }
+    else
+        assert(false);
+
+    // QTimer::singleShot(0, this, &Dashboard::slot_del_sensor_animation_complete);
+}
+
+void Dashboard::slot_del_sensor_animation_complete()
+{
+    auto animation = qobject_cast<QPropertyAnimation*>(sender());
+    animation->deleteLater();
+
+    // if(m_labels.count() == 1)
+    // {
+    //     // I don't understand why doing this works instead of
+    //     // calling resize() immediately, but it does.
+    //     QTimer::singleShot(0, this, [this]()->void{move(m_base_pos.x(), m_base_pos.y()); resize(m_base_dim.width(), m_base_dim.height());});
+    //     m_current_dim = m_base_dim;
+    // }
+    // else
+    // {
+    //     const int w = (m_orientation == Orientation::Vertical) ? m_current_dim.width() : m_sensor_size * m_labels.count();
+    //     const int h = (m_orientation == Orientation::Vertical) ? m_sensor_size * m_labels.count() : m_current_dim.height();
+
+    //     const int w_delta = abs(w - m_current_dim.width());
+    //     const int h_delta = abs(h - m_current_dim.height());
+
+    //     if(m_orientation == Orientation::Vertical && m_direction == Direction::Up)
+    //     {
+    //         m_current_pos.setY(m_current_pos.y() + h_delta);
+    //         move(m_current_pos.x(), m_current_pos.y());
+    //     }
+    //     else if(m_orientation == Orientation::Horizontal && m_direction == Direction::Left)
+    //     {
+    //         m_current_pos.setX(m_current_pos.x() + w_delta);
+    //         move(m_current_pos.x(), m_current_pos.y());
+    //     }
+
+    //     resize(w, h);
+    //     m_current_dim = QSize(w, h);
+    // }
+
+    repaint();
 }

@@ -47,14 +47,14 @@ Dialog::Dialog(QWidget *parent)
 #endif
 
     // insert a menu bar
-    auto myMenuBar = new QMenuBar(this);
-    auto fileMenu = myMenuBar->addMenu("File");
+    // auto myMenuBar = new QMenuBar(this);
+    // auto fileMenu = myMenuBar->addMenu("File");
 
-    auto quitAction = new QAction(QIcon(":/images/Quit.png"), tr("&Quit"), this);
-    fileMenu->addAction(quitAction);
-    connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
+    // auto quitAction = new QAction(QIcon(":/images/Quit.png"), tr("&Quit"), this);
+    // fileMenu->addAction(quitAction);
+    // connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
 
-    ui->verticalLayout->insertWidget(0, myMenuBar);
+    // ui->verticalLayout->insertWidget(0, myMenuBar);
 
     m_quit_action = new QAction(QIcon(":/images/Quit.png"), tr("&Quit"), this);
     connect(m_quit_action, &QAction::triggered, this, &Dialog::slot_quit);
@@ -67,9 +67,15 @@ Dialog::Dialog(QWidget *parent)
     connect(ui->button_Channels_Join, &QPushButton::clicked, this, &Dialog::slot_multicast_group_join);
     connect(ui->check_Channels_AutoRejoin, &QCheckBox::clicked, this, &Dialog::slot_set_control_states);
 
-    QPushButton* cancel_button = ui->buttonBox->button(QDialogButtonBox::Cancel);
-    cancel_button->setVisible(false);
-    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &Dialog::slot_update_settings);
+    connect(ui->radio_Orientation_Vertical, &QRadioButton::clicked, this, &Dialog::slot_orientation_vertical);
+    connect(ui->radio_Orientation_Horizontal, &QRadioButton::clicked, this, &Dialog::slot_orientation_horizontal);
+    connect(ui->radio_Direction_UpLeft, &QRadioButton::clicked, this, &Dialog::slot_direction_upleft);
+    connect(ui->radio_Direction_DownRight, &QRadioButton::clicked, this, &Dialog::slot_direction_downright);
+
+    // QPushButton* cancel_button = ui->buttonBox->button(QDialogButtonBox::Cancel);
+    // cancel_button->setVisible(false);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &Dialog::slot_accept_settings);
+    connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &Dialog::slot_accept_settings);
 
     load_settings();
 
@@ -86,15 +92,7 @@ Dialog::Dialog(QWidget *parent)
 
     m_trayIcon->show();
 
-    // The dashboard won't be visible unless it has something to display.
-    m_dashboard = DashboardPtr(new Dashboard(true, Dashboard::Orientation::Horizontal, Dashboard::Direction::Right));
-    m_dashboard->setGeometry(QRect(m_dash_pos.x(), m_dash_pos.y(), base_symmetry, base_symmetry));
-    connect(m_dashboard.data(), &Dashboard::signal_dash_moved, this, &Dialog::slot_dash_moved);
-
-#ifdef TEST
-    m_test_count = 0;
-    QTimer::singleShot(5000, this, &Dialog::slot_test_insert_sensor);
-#endif
+    QTimer::singleShot(0, this, &Dialog::slot_set_control_states);
 }
 
 Dialog::~Dialog()
@@ -109,7 +107,7 @@ void Dialog::slot_test_insert_sensor()
     {
         auto domain = DomainPtr(new Domain(123456789, "corrin"));
         connect(domain.data(), &Domain::signal_sensor_added, m_dashboard.data(), &Dashboard::slot_add_sensor);
-        connect(domain.data(), &Domain::signal_sensor_removed, m_dashboard.data(), &Dashboard::slot_remove_sensor);
+        connect(domain.data(), &Domain::signal_sensor_removed, m_dashboard.data(), &Dashboard::slot_del_sensor);
         connect(domain.data(), &Domain::signal_sensor_updated, m_dashboard.data(), &Dashboard::slot_update_sensor);
 
         m_domains[domain->id()] = domain;
@@ -174,6 +172,95 @@ void Dialog::build_tray_menu()
     connect(m_trayIconMenu, &QMenu::triggered, this, &Dialog::slot_tray_menu_action);
 }
 
+void Dialog::load_settings()
+{
+    m_multicast_group_member = false;
+
+    QString settings_file_name;
+#ifdef QT_WIN
+    settings_file_name = QDir::toNativeSeparators(QString("%1/Dash-d/Settings.ini").arg(qgetenv("APPDATA").constData()));
+#endif
+#ifdef QT_LINUX
+    auto config_dir = QStandardPaths::standardLocations(QStandardPaths::ConfigLocation);
+    settings_file_name = QDir::toNativeSeparators(QString("%1/Dash-d.ini").arg(config_dir[0]));
+#endif
+    QSettings settings(settings_file_name, QSettings::IniFormat);
+
+    settings.beginGroup("GUI");
+        ui->check_AutoStart->setChecked(settings.value("startup_enabled", false).toBool());
+
+        ui->line_MulticastGroupPort->setText(settings.value("group_port", "").toString());
+
+        ui->check_Channels_IPv4->setChecked(settings.value("ipv4_multicast_group_enabled", false).toBool());
+        ui->line_MulticastGroupIPv4->setText(settings.value("ipv4_multicast_group_address", "").toString());
+
+        ui->check_Channels_IPv6->setChecked(settings.value("ipv6_multicast_group_enabled", false).toBool());
+        ui->line_MulticastGroupIPv6->setText(settings.value("ipv6_multicast_group_address", "").toString());
+
+        ui->check_Channels_AutoRejoin->setChecked(settings.value("channels_autorejoin", false).toBool());
+
+        m_orientation = settings.value("orientation_vertical", true).toBool() ?
+            Dashboard::Orientation::Vertical :
+            Dashboard::Orientation::Horizontal;
+        m_direction = settings.value("direction_downright", true).toBool() ?
+            Dashboard::Direction::Down :
+            Dashboard::Direction::Up;
+
+        ui->radio_Orientation_Vertical->setChecked(m_orientation == Dashboard::Orientation::Vertical);
+        ui->radio_Orientation_Horizontal->setChecked(m_orientation == Dashboard::Orientation::Horizontal);
+
+        ui->radio_Direction_DownRight->setChecked(m_direction == Dashboard::Direction::Down || m_direction == Dashboard::Direction::Right);
+        ui->radio_Direction_UpLeft->setChecked(m_direction == Dashboard::Direction::Up|| m_direction == Dashboard::Direction::Left);
+
+        ui->check_Always_On_Top->setChecked(settings.value("always_on_top", false).toBool());
+
+        m_dash_pos = settings.value("dash_pos", QPoint(100, 100)).toPoint();
+    settings.endGroup();
+
+    if (!ui->check_Channels_AutoRejoin->isChecked())
+        // Open the main window to remind them that they need
+        // to initiate the connection manually
+        showNormal();
+    else
+        QTimer::singleShot(0, this, &Dialog::slot_multicast_group_join);
+}
+
+void Dialog::save_settings()
+{
+    QString settings_file_name;
+#ifdef QT_WIN
+    settings_file_name = QDir::toNativeSeparators(QString("%1/Dash-d/Settings.ini").arg(qgetenv("APPDATA").constData()));
+#endif
+#ifdef QT_LINUX
+    auto config_dir = QStandardPaths::standardLocations(QStandardPaths::ConfigLocation);
+    settings_file_name = QDir::toNativeSeparators(QString("%1/Dash-d.ini").arg(config_dir[0]));
+#endif
+    QSettings settings(settings_file_name, QSettings::IniFormat);
+
+    settings.clear();
+
+    settings.beginGroup("GUI");
+        settings.setValue("startup_enabled", ui->check_AutoStart->isChecked());
+
+        settings.setValue("group_port", ui->line_MulticastGroupPort->text());
+
+        settings.setValue("ipv4_multicast_group_enabled", ui->check_Channels_IPv4->isChecked());
+        settings.setValue("ipv4_multicast_group_address", ui->line_MulticastGroupIPv4->text());
+
+        settings.setValue("ipv6_multicast_group_enabled", ui->check_Channels_IPv6->isChecked());
+        settings.setValue("ipv6_multicast_group_address", ui->line_MulticastGroupIPv6->text());
+
+        settings.setValue("channels_autorejoin", ui->check_Channels_AutoRejoin->isChecked());
+
+        settings.setValue("orientation_vertical", ui->radio_Orientation_Vertical->isChecked());
+        settings.setValue("direction_downright", ui->radio_Direction_DownRight->isChecked());
+
+        settings.setValue("always_on_top", ui->check_Always_On_Top->isChecked());
+
+        settings.setValue("dash_pos", m_dash_pos);
+    settings.endGroup();
+}
+
 void Dialog::slot_quit()
 {
     // do any cleanup needed...
@@ -202,9 +289,11 @@ void Dialog::slot_set_control_states()
 
     ui->line_MulticastGroupPort->setEnabled(!m_multicast_group_member);
 
+    ui->check_Channels_IPv4->setEnabled(!m_multicast_group_member);
     ui->line_MulticastGroupIPv4->setEnabled(ipv4_enabled && !m_multicast_group_member);
     ui->button_MulticastGroupIPv4_Randomize->setEnabled(ipv4_enabled && !m_multicast_group_member);
 
+    ui->check_Channels_IPv6->setEnabled(!m_multicast_group_member);
     ui->line_MulticastGroupIPv6->setEnabled(ipv6_enabled && !m_multicast_group_member);
     ui->button_MulticastGroupIPv6_Randomize->setEnabled(ipv6_enabled && !m_multicast_group_member);
 
@@ -212,14 +301,22 @@ void Dialog::slot_set_control_states()
 
     ui->button_Channels_Join->setEnabled(ipv4_enabled || ipv6_enabled);
 
-    // auto enable_ok = !ui->line_TargetDisplay->text().isEmpty() &&
-    //                  !ui->line_ServiceData->text().isEmpty();
+    ui->radio_Orientation_Vertical->setEnabled(!m_multicast_group_member);
+    ui->radio_Orientation_Horizontal->setEnabled(!m_multicast_group_member);
+
+    ui->radio_Direction_DownRight->setEnabled(!m_multicast_group_member);
+    ui->radio_Direction_UpLeft->setEnabled(!m_multicast_group_member);
+
+    ui->check_Always_On_Top->setEnabled(!m_multicast_group_member);
+
+    // auto enable_ok = (ui->radio_Orientation_Vertical->isChecked() || ui->radio_Orientation_Horizontal->isChecked()) &&
+    //                  (ui->radio_Direction_UpLeft->isChecked() || ui->radio_Direction_DownRight->isChecked());
 
     // if(supports_push() && ui->check_PUSH->isChecked())
     //     enable_ok = enable_ok && !ui->line_IP->text().isEmpty();
 
     // QPushButton* ok_button = ui->buttonBox->button(QDialogButtonBox::Ok);
-    // ok_button->setVisible(enable_ok);
+    // ok_button->setEnabled(enable_ok);
 }
 
 void Dialog::slot_tray_menu_action(QAction* /*action*/)
@@ -260,9 +357,22 @@ void Dialog::slot_multicast_group_join()
         ui->button_Channels_Join->setText(tr("Join"));
 
         m_multicast_receiver.clear();
+        m_dashboard.clear();
+
+        // QPushButton* ok_button = ui->buttonBox->button(QDialogButtonBox::Ok);
+        // ok_button->setEnabled(true);
     }
     else
     {
+        // The dashboard won't be visible unless it has something to display.
+        m_dashboard = DashboardPtr(new Dashboard(true, ui->check_Always_On_Top->isChecked(), m_orientation,
+            // m_direction will only ever be Down or Up; map that in the Horizontal case
+            m_orientation == Dashboard::Orientation::Horizontal ?
+                (m_direction == Dashboard::Direction::Down ? Dashboard::Direction::Right: Dashboard::Direction::Left) : m_direction)
+        );
+        m_dashboard->setGeometry(QRect(m_dash_pos.x(), m_dash_pos.y(), base_symmetry, base_symmetry));
+        connect(m_dashboard.data(), &Dashboard::signal_dash_moved, this, &Dialog::slot_dash_moved);
+
         ui->button_Channels_Join->setText(tr("Leave"));
 
         auto group_port_str{ui->line_MulticastGroupPort->text()};
@@ -300,11 +410,18 @@ void Dialog::slot_multicast_group_join()
 
         m_multicast_receiver.reset(new Receiver(group_port, ipv4_multcast_group, ipv6_multcast_group, this));
         connect(m_multicast_receiver.data(), &Receiver::signal_datagram_available, this, &Dialog::slot_process_peer_event);
+
+        // QPushButton* ok_button = ui->buttonBox->button(QDialogButtonBox::Ok);
+        // ok_button->setEnabled(false);
     }
 
     m_multicast_group_member = !m_multicast_group_member;
 
     QTimer::singleShot(0, this, &Dialog::slot_set_control_states);
+#ifdef TEST
+    m_test_count = 0;
+    QTimer::singleShot(5000, this, &Dialog::slot_test_insert_sensor);
+#endif
 }
 
 void Dialog::slot_process_peer_event(const QByteArray& datagram)
@@ -398,78 +515,71 @@ void Dialog::slot_randomize_ipv6()
     m_randomized_addresses = !m_randomized_addresses && true;
 }
 
-void Dialog::load_settings()
+void Dialog::slot_accept_settings()
 {
-    m_multicast_group_member = false;
+    m_orientation = ui->radio_Orientation_Vertical->isChecked() ?
+        Dashboard::Orientation::Vertical :
+        Dashboard::Orientation::Horizontal;
+    m_direction = ui->radio_Direction_DownRight->isChecked() ?
+        Dashboard::Direction::Down :
+        Dashboard::Direction::Up;
 
-    QString settings_file_name;
-#ifdef QT_WIN
-    settings_file_name = QDir::toNativeSeparators(QString("%1/Dash-d/Settings.ini").arg(qgetenv("APPDATA").constData()));
-#endif
-#ifdef QT_LINUX
-    auto config_dir = QStandardPaths::standardLocations(QStandardPaths::ConfigLocation);
-    settings_file_name = QDir::toNativeSeparators(QString("%1/Dash-d.ini").arg(config_dir[0]));
-#endif
-    QSettings settings(settings_file_name, QSettings::IniFormat);
-
-    settings.beginGroup("GUI");
-        ui->check_AutoStart->setChecked(settings.value("startup_enabled", false).toBool());
-
-        ui->line_MulticastGroupPort->setText(settings.value("group_port", "").toString());
-
-        ui->check_Channels_IPv4->setChecked(settings.value("ipv4_multicast_group_enabled", false).toBool());
-        ui->line_MulticastGroupIPv4->setText(settings.value("ipv4_multicast_group_address", "").toString());
-
-        ui->check_Channels_IPv6->setChecked(settings.value("ipv6_multicast_group_enabled", false).toBool());
-        ui->line_MulticastGroupIPv6->setText(settings.value("ipv6_multicast_group_address", "").toString());
-
-        ui->check_Channels_AutoRejoin->setChecked(settings.value("channels_autorejoin", false).toBool());
-
-        m_dash_pos = settings.value("dash_pos", QPoint(100, 100)).toPoint();
-    settings.endGroup();
-
-    QTimer::singleShot(0, this, &Dialog::slot_set_control_states);
-
-    if (!ui->check_Channels_AutoRejoin->isChecked())
-        // open the main window to remind them that they need
-        // to initiate the connection manually
-        showNormal();
-    else
-        QTimer::singleShot(0, this, &Dialog::slot_multicast_group_join);
+    hide();
 }
 
-void Dialog::save_settings()
-{
-    QString settings_file_name;
-#ifdef QT_WIN
-    settings_file_name = QDir::toNativeSeparators(QString("%1/Dash-d/Settings.ini").arg(qgetenv("APPDATA").constData()));
-#endif
-#ifdef QT_LINUX
-    auto config_dir = QStandardPaths::standardLocations(QStandardPaths::ConfigLocation);
-    settings_file_name = QDir::toNativeSeparators(QString("%1/Dash-d.ini").arg(config_dir[0]));
-#endif
-    QSettings settings(settings_file_name, QSettings::IniFormat);
-
-    settings.clear();
-
-    settings.beginGroup("GUI");
-        settings.setValue("startup_enabled", ui->check_AutoStart->isChecked());
-
-        settings.setValue("group_port", ui->line_MulticastGroupPort->text());
-
-        settings.setValue("ipv4_multicast_group_enabled", ui->check_Channels_IPv4->isChecked());
-        settings.setValue("ipv4_multicast_group_address", ui->line_MulticastGroupIPv4->text());
-
-        settings.setValue("ipv6_multicast_group_enabled", ui->check_Channels_IPv6->isChecked());
-        settings.setValue("ipv6_multicast_group_address", ui->line_MulticastGroupIPv6->text());
-
-        settings.setValue("channels_autorejoin", ui->check_Channels_AutoRejoin->isChecked());
-
-        settings.setValue("dash_pos", m_dash_pos);
-    settings.endGroup();
-}
-
-void Dialog::slot_update_settings()
+void Dialog::slot_reject_settings()
 {
     hide();
+}
+
+void Dialog::slot_orientation_vertical()
+{
+    if(m_orientation != Dashboard::Orientation::Vertical)
+    {
+        ui->radio_Orientation_Vertical->setChecked(true);
+        ui->radio_Orientation_Horizontal->setChecked(false);
+
+        ui->radio_Direction_UpLeft->setText(tr("Up"));
+        ui->radio_Direction_DownRight->setText(tr("Down"));
+    }
+
+    m_orientation = Dashboard::Orientation::Vertical;
+
+    QTimer::singleShot(0, this, &Dialog::slot_set_control_states);
+}
+
+void Dialog::slot_orientation_horizontal()
+{
+    if(m_orientation != Dashboard::Orientation::Horizontal)
+    {
+        ui->radio_Orientation_Vertical->setChecked(false);
+        ui->radio_Orientation_Horizontal->setChecked(true);
+
+        ui->radio_Direction_UpLeft->setText(tr("Left"));
+        ui->radio_Direction_DownRight->setText(tr("Right"));
+    }
+
+    m_orientation = Dashboard::Orientation::Horizontal;
+
+    QTimer::singleShot(0, this, &Dialog::slot_set_control_states);
+}
+
+void Dialog::slot_direction_downright()
+{
+    m_direction = Dashboard::Direction::Down;
+
+    ui->radio_Direction_UpLeft->setChecked(false);
+    ui->radio_Direction_DownRight->setChecked(true);
+
+    QTimer::singleShot(0, this, &Dialog::slot_set_control_states);
+}
+
+void Dialog::slot_direction_upleft()
+{
+    m_direction = Dashboard::Direction::Up;
+
+    ui->radio_Direction_UpLeft->setChecked(true);
+    ui->radio_Direction_DownRight->setChecked(false);
+
+    QTimer::singleShot(0, this, &Dialog::slot_set_control_states);
 }
