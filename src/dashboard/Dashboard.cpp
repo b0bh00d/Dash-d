@@ -63,6 +63,9 @@ void Dashboard::paintEvent(QPaintEvent* /*event*/)
     QColor BG = m_dark_mode ? QColor(0x2D, 0x2D, 0x2D) : QColor(0xFF, 0xFF, 0xFF);
     QColor BR = m_dark_mode ? QColor(0x4D, 0x4D, 0x4D) : QColor(0xBD, 0xBD, 0xBD);
 
+    if(m_mouse_inside)
+        BR = m_dark_mode ? BR.lighter() : BR.darker();
+
     QPainter painter(this);
     painter.setRenderHints(QPainter::Antialiasing);
     painter.setBrush(BG);
@@ -77,11 +80,15 @@ void Dashboard::paintEvent(QPaintEvent* /*event*/)
 
 void Dashboard::enterEvent(QEvent* event)
 {
+    m_mouse_inside = true;
+    repaint();
     QFrame::enterEvent(event);
 }
 
 void Dashboard::leaveEvent(QEvent* event)
 {
+    m_mouse_inside = false;
+    repaint();
     QFrame::leaveEvent(event);
 }
 
@@ -114,6 +121,7 @@ void Dashboard::mouseReleaseEvent(QMouseEvent* event)
 
     const auto pos = event->globalPos();
 
+    // TODO: The window's (x,y) position will be wrong in Up/Left situations when there's more than one sensor in the dashboard.
     m_base_pos = QPoint(pos.x() - m_left_offset, pos.y() - m_top_offset);
     m_current_pos = m_base_pos;
 
@@ -458,44 +466,11 @@ void Dashboard::slot_animate_del()
     }
     else
         assert(false);
-
-    // QTimer::singleShot(0, this, &Dashboard::slot_del_sensor_animation_complete);
 }
 
 void Dashboard::slot_del_sensor_animation_complete()
 {
     auto animation = qobject_cast<QPropertyAnimation*>(sender());
     animation->deleteLater();
-
-    // if(m_labels.count() == 1)
-    // {
-    //     // I don't understand why doing this works instead of
-    //     // calling resize() immediately, but it does.
-    //     QTimer::singleShot(0, this, [this]()->void{move(m_base_pos.x(), m_base_pos.y()); resize(m_base_dim.width(), m_base_dim.height());});
-    //     m_current_dim = m_base_dim;
-    // }
-    // else
-    // {
-    //     const int w = (m_orientation == Orientation::Vertical) ? m_current_dim.width() : m_sensor_size * m_labels.count();
-    //     const int h = (m_orientation == Orientation::Vertical) ? m_sensor_size * m_labels.count() : m_current_dim.height();
-
-    //     const int w_delta = abs(w - m_current_dim.width());
-    //     const int h_delta = abs(h - m_current_dim.height());
-
-    //     if(m_orientation == Orientation::Vertical && m_direction == Direction::Up)
-    //     {
-    //         m_current_pos.setY(m_current_pos.y() + h_delta);
-    //         move(m_current_pos.x(), m_current_pos.y());
-    //     }
-    //     else if(m_orientation == Orientation::Horizontal && m_direction == Direction::Left)
-    //     {
-    //         m_current_pos.setX(m_current_pos.x() + w_delta);
-    //         move(m_current_pos.x(), m_current_pos.y());
-    //     }
-
-    //     resize(w, h);
-    //     m_current_dim = QSize(w, h);
-    // }
-
-    repaint();
+    // repaint();
 }

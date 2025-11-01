@@ -117,6 +117,8 @@ private:    // data members
     QPoint      m_start_pos;
 
     ActionMap   m_actions;
+
+    bool        m_mouse_inside{false};
 };
 
 using DashboardPtr = QSharedPointer<Dashboard>;
