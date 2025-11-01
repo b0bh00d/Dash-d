@@ -524,6 +524,7 @@ void Dialog::slot_accept_settings()
         Dashboard::Direction::Down :
         Dashboard::Direction::Up;
 
+    save_settings();
     hide();
 }
 
