@@ -114,8 +114,8 @@ void Dialog::slot_test_insert_sensor()
     }
 
     auto domain = m_domains[123456789];
-    auto sensor = SensorPtr(new Sensor(m_test_count, "brix_reactor_monitor"));
-    sensor->set_state(SensorState::Healthy);
+    auto sensor = SensorPtr(new Sensor(QString("brix_reactor_monitor_%1").arg(m_test_count)));
+    sensor->set_state(SharedTypes::SensorState::Healthy);
     domain->add_sensor(sensor);
 
     QTimer::singleShot(5000, this, &Dialog::slot_test_poor_sensor);
@@ -123,13 +123,13 @@ void Dialog::slot_test_insert_sensor()
 
 void Dialog::slot_test_poor_sensor()
 {
-    m_domains[123456789]->update_sensor(m_test_count, SensorState::Poor);
+    m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Poor);
     QTimer::singleShot(5000, this, &Dialog::slot_test_critical_sensor);
 }
 
 void Dialog::slot_test_critical_sensor()
 {
-    m_domains[123456789]->update_sensor(m_test_count, SensorState::Critical);
+    m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Critical);
 
     if(++m_test_count == 2)
         QTimer::singleShot(5000, this, &Dialog::slot_test_remove_sensor);
@@ -139,7 +139,7 @@ void Dialog::slot_test_critical_sensor()
 
 void Dialog::slot_test_remove_sensor()
 {
-    m_domains[123456789]->del_sensor(m_test_count-1);
+    m_domains[123456789]->del_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count - 1));
 }
 #endif
 
@@ -437,18 +437,39 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
 
             auto msg_type = SharedTypes::MsgText2Type[object["type"].toString()];
             auto domain_id = reinterpret_cast<uint64_t>(object["domain_id"].toString().toULong());
-            Q_UNUSED(domain_id)
             auto domain_name = QUrl::fromPercentEncoding(object["domain_name"].toString().toUtf8());
+
+            if(!m_domains.contains(domain_id))
+            {
+                auto domain = DomainPtr(new Domain(domain_id, domain_name));
+                connect(domain.data(), &Domain::signal_sensor_added, m_dashboard.data(), &Dashboard::slot_add_sensor);
+                connect(domain.data(), &Domain::signal_sensor_removed, m_dashboard.data(), &Dashboard::slot_del_sensor);
+                connect(domain.data(), &Domain::signal_sensor_updated, m_dashboard.data(), &Dashboard::slot_update_sensor);
+
+                m_domains[domain->id()] = domain;
+            }
+
+            auto domain = m_domains[domain_id];
 
             switch(msg_type)
             {
                 case SharedTypes::MessageType::Sensor:
                     assert(object.contains("sensor_name"));
                     assert(object.contains("sensor_state"));
+
                     {
                         auto sensor_name = QUrl::fromPercentEncoding(object["sensor_name"].toString().toUtf8());
                         auto sensor_state = object["sensor_state"].toString().toLower();
                         assert(SharedTypes::MsgText2State.contains(sensor_state));
+
+                        if(!domain->has_sensor(sensor_name))
+                        {
+                            auto sensor = SensorPtr(new Sensor(sensor_name));
+                            sensor->set_state(SharedTypes::MsgText2State[sensor_state]);
+                            domain->add_sensor(sensor);
+                        }
+                        else
+                            domain->update_sensor(sensor_name, SharedTypes::MsgText2State[sensor_state]);
 
                         ui->text_Log->appendPlainText(
                             QString("%1::%2::%3")
@@ -462,6 +483,10 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
                     // Sensor has gone offline
                     {
                         auto sensor_name = QUrl::fromPercentEncoding(object["sensor_name"].toString().toUtf8());
+                        assert(domain->has_sensor(sensor_name));
+
+                        domain->del_sensor(sensor_name);
+
                         ui->text_Log->appendPlainText(
                             QString("%1::%2::Offline")
                                 .arg(domain_name, sensor_name)
@@ -476,6 +501,7 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
                     {
                         auto sensor_name = QUrl::fromPercentEncoding(object["sensor_name"].toString().toUtf8());
                         auto domain_warning = object["domain_warning"].toString();
+
                         ui->text_Log->appendPlainText(
                             QString("%1::%2::Warning::%3")
                                 .arg(domain_name, sensor_name, domain_warning)

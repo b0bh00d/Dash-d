@@ -303,7 +303,7 @@ void Dashboard::add_sensor(Domain* domain, Sensor* sensor, int w, int h)
     if(m_labels.isEmpty())
         show();
 
-    m_labels[sensor->id()] = label;
+    m_labels[sensor->name()] = label;
 
     m_current_dim = QSize(w, h);
 
@@ -312,13 +312,13 @@ void Dashboard::add_sensor(Domain* domain, Sensor* sensor, int w, int h)
 
 void Dashboard::del_sensor(SensorPtr sensor)
 {
-    del_sensor(sensor->id());
+    del_sensor(sensor->name());
 }
 
-void Dashboard::del_sensor(std::uint64_t id)
+void Dashboard::del_sensor(const QString& name)
 {
-    auto label = m_labels[id];
-    m_labels.remove(id);
+    auto label = m_labels[name];
+    m_labels.remove(name);
 
     auto my_layout = reinterpret_cast<QVBoxLayout*>(layout());
     my_layout->takeAt(my_layout->indexOf(label));
@@ -339,14 +339,14 @@ void Dashboard::slot_add_sensor(SensorPtr sensor)
     add_sensor(sensor);
 }
 
-void Dashboard::slot_del_sensor(std::uint64_t id)
+void Dashboard::slot_del_sensor(const QString& name)
 {
-    del_sensor(id);
+    del_sensor(name);
 }
 
-void Dashboard::slot_update_sensor(std::uint64_t id, SensorState state, bool notify)
+void Dashboard::slot_update_sensor(const QString& name, SharedTypes::SensorState state, bool notify)
 {
-    m_target_sensor = m_labels[id];
+    m_target_sensor = m_labels[name];
 
     QString image = Sensor::StateImages[state];
     m_next_image = (m_orientation == Orientation::Vertical) ? QPixmap(image).scaledToWidth(m_base_dim.width()) : QPixmap(image).scaledToHeight(m_base_dim.height());

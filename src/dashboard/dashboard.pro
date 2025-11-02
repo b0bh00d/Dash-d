@@ -53,7 +53,6 @@ HEADERS += \
     Packet.h \
     Receiver.h \
     Sensor.h \
-    Types.h \
     Dialog.h
 
 FORMS += \

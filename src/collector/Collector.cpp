@@ -72,7 +72,7 @@ Collector::Collector(int argc, char *argv[])
     // If no log file is specified, outptut will go to the console.
     // QString logPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     // logFileOption.setDefaultValue(logPath);
-    logFileOption.setDefaultValue("");
+    logFileOption.setDefaultValue("");  // default to the console
     parser.addOption(logFileOption);
 
     QCommandLineOption portOption(QStringList() << "P" << "port",
@@ -98,7 +98,7 @@ Collector::Collector(int argc, char *argv[])
     parser.addOption(cleanOption);
 
     QCommandLineOption updateOption(QStringList() << "update-settings",
-            QCoreApplication::translate("main", "Update persistent settings with current command line options."));
+            QCoreApplication::translate("main", "Update persistent settings with current command line options and exit."));
     parser.addOption(updateOption);
 
 #if 0
@@ -135,7 +135,7 @@ Collector::Collector(int argc, char *argv[])
 
     // ----- 1. Set up logging output (console or log file)
 
-    // NOTE: This needs to be initialized first, so logging macros
+    // FYI: This needs to be initialized first, so logging macros
     // can properly redirect (if required)
 
     auto target_path = parser.value(logFileOption);

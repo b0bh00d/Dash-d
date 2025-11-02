@@ -1,21 +1,21 @@
 #include "Sensor.h"
 
-const QMap<SensorState, QString> Sensor::StateImages{
-    {SensorState::Healthy, QStringLiteral(":/images/Healthy.png")},
-    {SensorState::Poor, QStringLiteral(":/images/Poor.png")},
-    {SensorState::Critical, QStringLiteral(":/images/Critical.png")},
+const QMap<SharedTypes::SensorState, QString> Sensor::StateImages{
+    {SharedTypes::SensorState::Healthy, QStringLiteral(":/images/Healthy.png")},
+    {SharedTypes::SensorState::Poor, QStringLiteral(":/images/Poor.png")},
+    {SharedTypes::SensorState::Critical, QStringLiteral(":/images/Critical.png")},
+    {SharedTypes::SensorState::Deceased, QStringLiteral(":/images/Deceased.png")},
 };
 
-Sensor::Sensor(std::uint64_t id, const QString& name, QObject* parent)
+Sensor::Sensor(const QString& name, QObject* parent)
     : QObject{parent},
-      m_id(id),
       m_name(name)
 {
 }
 
-void Sensor::set_state(SensorState state)
+void Sensor::set_state(SharedTypes::SensorState state)
 {
-    assert(state != SensorState::Undefined);
+    assert(state != SharedTypes::SensorState::Undefined);
 
     if(state != m_state)
     {

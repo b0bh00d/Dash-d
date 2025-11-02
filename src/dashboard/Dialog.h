@@ -17,8 +17,8 @@
 
 constexpr int multicast_port{22834};
 
-// // This is the initial width/height of the dashboard window.
-// constexpr int base_symmetry{75};
+// This is the initial width/height of the dashboard window.
+constexpr int base_symmetry{75};
 
 QT_BEGIN_NAMESPACE
 namespace Ui {

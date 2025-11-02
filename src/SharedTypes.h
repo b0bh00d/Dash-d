@@ -23,6 +23,7 @@ public:    // typedefs and enums
     static Text2TypeMap MsgText2Type;
 
     enum class SensorState {
+        Undefined,
         Healthy,
         Poor,
         Critical,

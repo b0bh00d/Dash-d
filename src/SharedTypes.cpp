@@ -15,6 +15,7 @@ SharedTypes::Text2TypeMap SharedTypes::MsgText2Type = {
 };
 
 SharedTypes::State2TextMap SharedTypes::MsgState2Text = {
+    { SharedTypes::SensorState::Undefined, "undefined" },
     { SharedTypes::SensorState::Healthy, "healthy" },
     { SharedTypes::SensorState::Poor, "poor" },
     { SharedTypes::SensorState::Critical, "critical" },
@@ -22,6 +23,7 @@ SharedTypes::State2TextMap SharedTypes::MsgState2Text = {
 };
 
 SharedTypes::Text2StateMap SharedTypes::MsgText2State = {
+    { "undefined", SharedTypes::SensorState::Undefined},
     { "healthy", SharedTypes::SensorState::Healthy },
     { "poor", SharedTypes::SensorState::Poor },
     { "critical", SharedTypes::SensorState::Critical },

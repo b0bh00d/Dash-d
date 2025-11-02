@@ -15,9 +15,10 @@
 
 #include <QPropertyAnimation>
 
+#include "../SharedTypes.h"
+
 #include "Domain.h"
 #include "Sensor.h"
-#include "Types.h"
 
 // The Dashboard class is a display container for Senors.
 
@@ -46,15 +47,15 @@ public:
 
     void        add_sensor(SensorPtr sensor);
     void        del_sensor(SensorPtr sensor);
-    void        del_sensor(std::uint64_t id);
+    void        del_sensor(const QString& name);
 
 signals:
     void        signal_dash_moved(QPoint pos);
 
 public slots:
     void        slot_add_sensor(SensorPtr sensor);
-    void        slot_del_sensor(std::uint64_t id);
-    void        slot_update_sensor(std::uint64_t id, SensorState state, bool notify);
+    void        slot_del_sensor(const QString& name);
+    void        slot_update_sensor(const QString& name, SharedTypes::SensorState state, bool notify);
 
 protected:  // methods
     void        paintEvent(QPaintEvent*) Q_DECL_OVERRIDE;
@@ -72,7 +73,7 @@ private slots:
     void        slot_animate_del();
 
 private:    // typedefs and enums
-    using LabelMap = QMap<std::uint64_t, QLabel*>;
+    using LabelMap = QMap<QString, QLabel*>;
 
     using ActionStack = std::tuple<Domain*, Sensor*, int, int>;
     using ActionMap = std::map<QPropertyAnimation*, ActionStack>;
