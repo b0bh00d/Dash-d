@@ -100,6 +100,9 @@ private:    // data members
 
     Dashboard::Orientation  m_orientation{Dashboard::Orientation::Vertical};
     Dashboard::Direction    m_direction{Dashboard::Direction::Down};
+
+    QString     m_version;
+
 #ifdef TEST
     int         m_test_count{0};
 #endif

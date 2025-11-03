@@ -39,10 +39,10 @@ Dialog::Dialog(QWidget *parent)
 
     ui->setupUi(this);
 
-    auto version = QString("%1.%2").arg(major, minor);
+    m_version = QString("%1.%2").arg(major, minor);
     if(patch)
-        version = QString("%1.%2").arg(version, patch);
-    setWindowTitle(tr("Dash'd v%1 by Bob Hood").arg(version));
+        m_version = QString("%1.%2").arg(m_version, patch);
+    setWindowTitle(tr("Dash'd v%1 by Bob Hood").arg(m_version));
     setWindowIcon(QIcon(":/images/Tray.png"));
 
 #ifdef QT_LINUX
@@ -90,7 +90,7 @@ Dialog::Dialog(QWidget *parent)
     connect(m_trayIcon, &QSystemTrayIcon::activated, this, &Dialog::slot_tray_icon_activated);
 
     m_trayIcon->setIcon(QIcon(":/images/Tray.png"));
-    m_trayIcon->setToolTip(tr("Dash'd"));
+    m_trayIcon->setToolTip(tr("Dash'd v%1").arg(m_version));
     build_tray_menu();
 
     m_trayIcon->show();
