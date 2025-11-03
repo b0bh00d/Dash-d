@@ -2,7 +2,9 @@
 
 #include <QMap>
 
-constexpr float version = 1.0;
+constexpr int major = 0;
+constexpr int minor = 1;
+constexpr int patch = 0;
 
 class SharedTypes
 {
