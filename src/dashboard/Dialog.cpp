@@ -39,14 +39,14 @@ Dialog::Dialog(QWidget *parent)
 
     ui->setupUi(this);
 
-    m_version = QString("%1.%2").arg(major, minor);
+    m_version = QString("%1.%2").arg(major).arg(minor);
     if(patch)
-        m_version = QString("%1.%2").arg(m_version, patch);
+        m_version = QString("%1.%2").arg(m_version).arg(patch);
     setWindowTitle(tr("Dash'd v%1 by Bob Hood").arg(m_version));
     setWindowIcon(QIcon(":/images/Tray.png"));
 
 #ifdef QT_LINUX
-    ui->check_AutoStart->setEnabled(false);
+    ui->check_AutoStart->setVisible(false);
 #endif
 
     // insert a menu bar

@@ -45,9 +45,9 @@ Collector::Collector(int argc, char *argv[])
     Q_UNUSED(originalHandler)
 
     setApplicationName("Dash'd Collector");
-    auto version = QString("%1.%2").arg(major, minor);
+    auto version = QString("%1.%2").arg(major).arg(minor);
     if(patch)
-        version = QString("%1.%2").arg(version, patch);
+        version = QString("%1.%2").arg(version).arg(patch);
     setApplicationVersion(version);
 
     // Load persistent settings from a file before processing
