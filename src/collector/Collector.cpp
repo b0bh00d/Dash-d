@@ -45,7 +45,7 @@ Collector::Collector(int argc, char *argv[])
     Q_UNUSED(originalHandler)
 
     setApplicationName("Dash'd Collector");
-    setApplicationVersion("1.0");
+    setApplicationVersion(QString::number(version));
 
     // Load persistent settings from a file before processing
     // commannd line options.
@@ -70,9 +70,7 @@ Collector::Collector(int argc, char *argv[])
             QCoreApplication::translate("main", "Specify the location to save log output."),
             QCoreApplication::translate("main", "DIR"));
     // If no log file is specified, outptut will go to the console.
-    // QString logPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-    // logFileOption.setDefaultValue(logPath);
-    logFileOption.setDefaultValue("");  // default to the console
+    logFileOption.setDefaultValue("");
     parser.addOption(logFileOption);
 
     QCommandLineOption portOption(QStringList() << "P" << "port",

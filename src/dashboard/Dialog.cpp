@@ -39,7 +39,7 @@ Dialog::Dialog(QWidget *parent)
 
     ui->setupUi(this);
 
-    setWindowTitle(tr("Dash'd by Bob Hood"));
+    setWindowTitle(tr("Dash'd v%1 by Bob Hood").arg(QString::number(version)));
     setWindowIcon(QIcon(":/images/Tray.png"));
 
 #ifdef QT_LINUX

@@ -2,6 +2,8 @@
 
 #include <QMap>
 
+constexpr float version = 1.0;
+
 class SharedTypes
 {
 public:
