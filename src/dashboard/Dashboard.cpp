@@ -264,6 +264,8 @@ void Dashboard::add_sensor(Domain* domain, Sensor* sensor, int w, int h)
 
     auto label = new QLabel();
     label->setPixmap(pixmap);
+
+    label->setProperty("base_tooltip", tooltip);
     label->setToolTip(tooltip);
 
     QBoxLayout* my_layout = reinterpret_cast<QBoxLayout*>(layout());
@@ -344,7 +346,7 @@ void Dashboard::slot_del_sensor(const QString& name)
     del_sensor(name);
 }
 
-void Dashboard::slot_update_sensor(const QString& name, SharedTypes::SensorState state, bool notify)
+void Dashboard::slot_update_sensor(const QString& name, SharedTypes::SensorState state, const QString& message, bool notify)
 {
     m_target_sensor = m_labels[name];
 
@@ -360,6 +362,16 @@ void Dashboard::slot_update_sensor(const QString& name, SharedTypes::SensorState
     }
     else
         m_target_sensor->setPixmap(m_next_image);
+
+    auto base_tooltip = m_target_sensor->property("base_tooltip").toString();
+    if(!message.isEmpty())
+    {
+        auto tooltip = QString("%1\n%2").arg(base_tooltip, message);
+        m_target_sensor->setToolTip(tooltip);
+    }
+    else
+        m_target_sensor->setToolTip(base_tooltip);
+
 }
 
 void Dashboard::slot_flash_notify()

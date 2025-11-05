@@ -31,7 +31,8 @@ public:    // typedefs and enums
         Healthy,
         Poor,
         Critical,
-        Deceased
+        Deceased,
+        Offline
     };
 
     using State2TextMap = QMap<SharedTypes::SensorState, QString>;

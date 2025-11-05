@@ -2,10 +2,10 @@
 
 #include <tuple>
 
+#include <QSharedPointer>
+
 #include <QFrame>
 #include <QLabel>
-
-#include <QSharedPointer>
 
 #include <QEvent>
 #include <QMouseEvent>
@@ -55,7 +55,7 @@ signals:
 public slots:
     void        slot_add_sensor(SensorPtr sensor);
     void        slot_del_sensor(const QString& name);
-    void        slot_update_sensor(const QString& name, SharedTypes::SensorState state, bool notify);
+    void        slot_update_sensor(const QString& name, SharedTypes::SensorState state, const QString& message, bool notify);
 
 protected:  // methods
     void        paintEvent(QPaintEvent*) Q_DECL_OVERRIDE;

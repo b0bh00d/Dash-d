@@ -1,14 +1,13 @@
 <RCC>
     <qresource prefix="/">
-        <file>images/ClipNet.png</file>
         <file>images/Quit.png</file>
-        <file>images/Launch.png</file>
-        <file>images/Options.png</file>
         <file>images/Critical.png</file>
         <file>images/Healthy.png</file>
         <file>images/Poor.png</file>
         <file>images/Deceased.png</file>
         <file>images/Empty.png</file>
         <file>images/Tray.png</file>
+        <file>images/Offline.png</file>
+        <file>images/OfflineEmpty.png</file>
     </qresource>
 </RCC>

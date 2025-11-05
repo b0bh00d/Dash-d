@@ -35,7 +35,7 @@ win32 {
     # }
 }
 
-#DEFINES += TEST
+DEFINES += TEST
 
 SOURCES += \
     ../SharedTypes.cpp \

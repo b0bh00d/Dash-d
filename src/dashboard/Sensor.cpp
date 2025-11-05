@@ -5,6 +5,7 @@ const QMap<SharedTypes::SensorState, QString> Sensor::StateImages{
     {SharedTypes::SensorState::Poor, QStringLiteral(":/images/Poor.png")},
     {SharedTypes::SensorState::Critical, QStringLiteral(":/images/Critical.png")},
     {SharedTypes::SensorState::Deceased, QStringLiteral(":/images/Deceased.png")},
+    {SharedTypes::SensorState::Offline, QStringLiteral(":/images/Offline.png")},
 };
 
 Sensor::Sensor(const QString& name, QObject* parent)
@@ -13,13 +14,16 @@ Sensor::Sensor(const QString& name, QObject* parent)
 {
 }
 
-void Sensor::set_state(SharedTypes::SensorState state)
+void Sensor::set_state(SharedTypes::SensorState state, const QString& message)
 {
     assert(state != SharedTypes::SensorState::Undefined);
+
+    m_message = message;
 
     if(state != m_state)
     {
         m_state = state;
+        m_last_update = QDateTime::currentDateTime();
         emit signal_state_changed();
     }
 }

@@ -20,6 +20,7 @@ SharedTypes::State2TextMap SharedTypes::MsgState2Text = {
     { SharedTypes::SensorState::Poor, "poor" },
     { SharedTypes::SensorState::Critical, "critical" },
     { SharedTypes::SensorState::Deceased, "deceased" },
+    { SharedTypes::SensorState::Offline, "offline" },
 };
 
 SharedTypes::Text2StateMap SharedTypes::MsgText2State = {
@@ -28,4 +29,5 @@ SharedTypes::Text2StateMap SharedTypes::MsgText2State = {
     { "poor", SharedTypes::SensorState::Poor },
     { "critical", SharedTypes::SensorState::Critical },
     { "deceased", SharedTypes::SensorState::Deceased },
+    { "offline", SharedTypes::SensorState::Offline },
 };

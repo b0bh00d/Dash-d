@@ -78,12 +78,9 @@ Dialog::Dialog(QWidget *parent)
     // QPushButton* cancel_button = ui->buttonBox->button(QDialogButtonBox::Cancel);
     // cancel_button->setVisible(false);
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &Dialog::slot_accept_settings);
-    connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &Dialog::slot_accept_settings);
+    connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &Dialog::slot_reject_settings);
 
     load_settings();
-
-    // connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &Dialog::slot_update_settings);
-    // connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &Dialog::slot_dismiss_settings);
 
     m_trayIcon = new QSystemTrayIcon(this);
     connect(m_trayIcon, &QSystemTrayIcon::messageClicked, this, &Dialog::slot_tray_message_clicked);
@@ -126,13 +123,15 @@ void Dialog::slot_test_insert_sensor()
 
 void Dialog::slot_test_poor_sensor()
 {
-    m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Poor);
+    m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Poor,
+        tr("Disk space below 20%"));
     QTimer::singleShot(5000, this, &Dialog::slot_test_critical_sensor);
 }
 
 void Dialog::slot_test_critical_sensor()
 {
-    m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Critical);
+    m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Critical,
+        tr("Disk space below 10%"));
 
     if(++m_test_count == 2)
         QTimer::singleShot(5000, this, &Dialog::slot_test_remove_sensor);
@@ -142,7 +141,8 @@ void Dialog::slot_test_critical_sensor()
 
 void Dialog::slot_test_remove_sensor()
 {
-    m_domains[123456789]->del_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count - 1));
+    m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count - 1), SharedTypes::SensorState::Offline);
+    // m_domains[123456789]->del_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count - 1));
 }
 #endif
 
@@ -459,20 +459,21 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
                 case SharedTypes::MessageType::Sensor:
                     assert(object.contains("sensor_name"));
                     assert(object.contains("sensor_state"));
+                    assert(object.contains("sensor_message"));
 
                     {
                         auto sensor_name = QUrl::fromPercentEncoding(object["sensor_name"].toString().toUtf8());
                         auto sensor_state = object["sensor_state"].toString().toLower();
-                        assert(SharedTypes::MsgText2State.contains(sensor_state));
+                        auto sensor_message = object["sensor_message"].toString();
 
                         if(!domain->has_sensor(sensor_name))
                         {
                             auto sensor = SensorPtr(new Sensor(sensor_name));
-                            sensor->set_state(SharedTypes::MsgText2State[sensor_state]);
+                            sensor->set_state(SharedTypes::MsgText2State[sensor_state], sensor_message);
                             domain->add_sensor(sensor);
                         }
                         else
-                            domain->update_sensor(sensor_name, SharedTypes::MsgText2State[sensor_state]);
+                            domain->update_sensor(sensor_name, SharedTypes::MsgText2State[sensor_state], sensor_message);
 
                         ui->text_Log->appendPlainText(
                             QString("%1::%2::%3")
@@ -487,8 +488,11 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
                     {
                         auto sensor_name = QUrl::fromPercentEncoding(object["sensor_name"].toString().toUtf8());
                         assert(domain->has_sensor(sensor_name));
+                        QString sensor_message;
+                        if(object.contains("sensor_message"))
+                            sensor_message = object["sensor_message"].toString();
 
-                        domain->del_sensor(sensor_name);
+                        domain->update_sensor(sensor_name, SharedTypes::SensorState::Offline, sensor_message);
 
                         ui->text_Log->appendPlainText(
                             QString("%1::%2::Offline")

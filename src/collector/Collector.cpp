@@ -408,16 +408,21 @@ void Collector::process_queue()
                     {
                         auto sensor_name = object["sensor_name"].toString();
                         auto sensor_state= object["sensor_state"].toString().toLower();
+                        QString sensor_message;
+                        if(object.contains("sensor_message"))
+                            sensor_message = object["sensor_message"].toString();
 
                         if(SharedTypes::MsgText2State.contains(sensor_state))
                         {
                             auto sensor_data = QString("{ \"domain_id\" : \"%1\", \"domain_name\" : \"%2\", "
                                                        " \"type\" : \"%3\", "
-                                                       " \"sensor_name\" : \"%4\", \"sensor_state\" : \"%5\" }")
+                                                       " \"sensor_name\" : \"%4\", \"sensor_state\" : \"%5\", "
+                                                       " \"sensor_message\" : \"%6\" }")
                                 .arg(m_id)
                                 .arg(QUrl::toPercentEncoding(m_name),
                                     SharedTypes::MsgType2Text[SharedTypes::MessageType::Sensor],
-                                    QUrl::toPercentEncoding(sensor_name), sensor_state);
+                                    QUrl::toPercentEncoding(sensor_name), sensor_state,
+                                    QUrl::toPercentEncoding(sensor_message));
 
                             // Send the sensor data to the multicast group
                             m_sender->send_datagram(sensor_data.toUtf8());

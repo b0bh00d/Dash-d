@@ -3,11 +3,15 @@
 #include <QMap>
 #include <QObject>
 #include <QString>
+#include <QTimer>
 #include <QSharedPointer>
 
 #include "Sensor.h"
 
 // The Domain class represents a single domain with one or more Sensors.
+
+constexpr int offline_timeout =       10 /* seconds */ * 1000 /* to milliseconds */;
+constexpr int housekeeping_interval = 5                * 1000;
 
 class Domain : public QObject
 {
@@ -17,28 +21,34 @@ public:
     ~Domain();
 
     std::uint64_t id() const { return m_id; }
-    QString name() const { return m_name; }
+    QString     name() const { return m_name; }
 
-    bool    has_sensor(const QString& name) const { return m_sensors.contains(name); }
-    void    add_sensor(SensorPtr sensor);
-    void    del_sensor(const QString& name);
-    void    update_sensor(QString name, SharedTypes::SensorState state);
+    bool        has_sensor(const QString& name) const { return m_sensors.contains(name); }
+    void        add_sensor(SensorPtr sensor);
+    void        del_sensor(const QString& name);
+    void        update_sensor(QString name, SharedTypes::SensorState state, const QString& message = QString());
 
-    int     sensor_count() const { return m_sensors.count(); }
+    int         sensor_count() const { return m_sensors.count(); }
 
 signals:
     void        signal_sensor_added(SensorPtr sensor);
     void        signal_sensor_removed(const QString& name);
-    void        signal_sensor_updated(const QString& name, SharedTypes::SensorState state, bool notify);
+    void        signal_sensor_updated(const QString& name, SharedTypes::SensorState state, const QString& message, bool notify);
+
+private slots:
+    void        slot_housekeeping();
 
 private: // typedefs
     using SensorMap = QMap<QString, SensorPtr>;
+    using TimerPtr = QSharedPointer<QTimer>;
 
 private:    // data members
     std::uint64_t   m_id;
-    QString         m_name;
+    QString     m_name;
 
-    SensorMap        m_sensors;
+    SensorMap   m_sensors;
+
+    TimerPtr    m_housekeeping{nullptr};
 };
 
 using DomainPtr = QSharedPointer<Domain>;
