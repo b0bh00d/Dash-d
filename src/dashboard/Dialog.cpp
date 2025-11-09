@@ -28,6 +28,7 @@ Dialog::Dialog(QWidget *parent)
     //         std::numeric_limits<std::uint64_t>::max()
     //     );
 
+    // Check for collisions with 64-bit integers
     // auto map = QMap<unsigned long long, bool>();
     // for(int i = 0;i < 10000000;++i)
     // {
@@ -127,6 +128,7 @@ void Dialog::slot_test_insert_sensor()
 
 void Dialog::slot_test_poor_sensor()
 {
+    // Test the "poor" state
     m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Poor,
         tr("Disk space below 20%"));
     QTimer::singleShot(5000, this, &Dialog::slot_test_critical_sensor);
@@ -134,6 +136,7 @@ void Dialog::slot_test_poor_sensor()
 
 void Dialog::slot_test_critical_sensor()
 {
+    // Test the "critical" state
     m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Critical,
         tr("Disk space below 10%"));
 
@@ -145,6 +148,7 @@ void Dialog::slot_test_critical_sensor()
 
 void Dialog::slot_test_remove_sensor()
 {
+    // Test the "offline" state
     m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count - 1), SharedTypes::SensorState::Offline);
     // m_domains[123456789]->del_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count - 1));
 }
@@ -162,16 +166,12 @@ void Dialog::closeEvent(QCloseEvent* event)
 void Dialog::build_tray_menu()
 {
     if (m_trayIconMenu)
-    {
-        // disconnect(m_trayIconMenu, &QMenu::triggered, this, &Dialog::slot_tray_menu_action);
         delete m_trayIconMenu;
-    }
 
     m_trayIconMenu = new QMenu(this);
 
-    //trayIconMenu->addSeparator();
+    // trayIconMenu->addSeparator();
 
-    // m_trayIconMenu->addAction(m_restore_action);
     m_trayIconMenu->addAction(m_quit_action);
 
     m_trayIcon->setContextMenu(m_trayIconMenu);
@@ -270,7 +270,7 @@ void Dialog::save_settings()
 
 void Dialog::slot_quit()
 {
-    // do any cleanup needed...
+    // Do any cleanup needed...
 
     m_trayIcon->hide();
 
@@ -280,7 +280,7 @@ void Dialog::slot_quit()
     save_settings();
 
     // ...and leave.
-    QTimer::singleShot(100, qApp, &QApplication::quit);
+    QTimer::singleShot(0, qApp, &QApplication::quit);
 }
 
 void Dialog::slot_dash_moved(QPoint pos)
@@ -315,15 +315,6 @@ void Dialog::slot_set_control_states()
     ui->radio_Direction_UpLeft->setEnabled(!m_multicast_group_member);
 
     ui->check_Always_On_Top->setEnabled(!m_multicast_group_member);
-
-    // auto enable_ok = (ui->radio_Orientation_Vertical->isChecked() || ui->radio_Orientation_Horizontal->isChecked()) &&
-    //                  (ui->radio_Direction_UpLeft->isChecked() || ui->radio_Direction_DownRight->isChecked());
-
-    // if(supports_push() && ui->check_PUSH->isChecked())
-    //     enable_ok = enable_ok && !ui->line_IP->text().isEmpty();
-
-    // QPushButton* ok_button = ui->buttonBox->button(QDialogButtonBox::Ok);
-    // ok_button->setEnabled(enable_ok);
 }
 
 void Dialog::slot_tray_menu_action(QAction* /*action*/)
@@ -357,8 +348,6 @@ void Dialog::slot_tray_icon_activated(QSystemTrayIcon::ActivationReason reason)
 
 void Dialog::slot_multicast_group_join()
 {
-    // save_settings();
-
     if (m_multicast_group_member)
     {
         ui->button_Channels_Join->setText(tr("Join"));
@@ -373,7 +362,7 @@ void Dialog::slot_multicast_group_join()
     {
         // The dashboard won't be visible unless it has something to display.
         m_dashboard = DashboardPtr(new Dashboard(true, ui->check_Always_On_Top->isChecked(), m_orientation,
-            // m_direction will only ever be Down or Up; map that in the Horizontal case
+            // 'm_direction' will only ever be Down or Up; map that in the Horizontal case
             m_orientation == Dashboard::Orientation::Horizontal ?
                 (m_direction == Dashboard::Direction::Down ? Dashboard::Direction::Right: Dashboard::Direction::Left) : m_direction)
         );
@@ -417,9 +406,6 @@ void Dialog::slot_multicast_group_join()
 
         m_multicast_receiver.reset(new Receiver(group_port, ipv4_multcast_group, ipv6_multcast_group, this));
         connect(m_multicast_receiver.data(), &Receiver::signal_datagram_available, this, &Dialog::slot_process_peer_event);
-
-        // QPushButton* ok_button = ui->buttonBox->button(QDialogButtonBox::Ok);
-        // ok_button->setEnabled(false);
     }
 
     m_multicast_group_member = !m_multicast_group_member;

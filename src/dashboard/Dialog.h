@@ -15,8 +15,6 @@
 #include "Domain.h"
 #include "Receiver.h"
 
-constexpr int multicast_port{22834};
-
 // This is the initial width/height of the dashboard window.
 constexpr int base_symmetry{75};
 
@@ -93,7 +91,7 @@ private:    // data members
     bool        m_multicast_group_member{false};
     bool        m_randomized_addresses{false};
 
-    // list of annunciators
+    // List of domains we've heard from
     DomainMap   m_domains;
 
     QPoint      m_dash_pos;

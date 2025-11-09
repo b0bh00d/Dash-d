@@ -27,21 +27,21 @@ Dashboard::Dashboard(bool dark_mode, bool always_on_top, Orientation orientation
         flags |= Qt::WindowStaysOnTopHint;
     setWindowFlags(flags);
 
-    QBoxLayout* my_layout{nullptr};
-    QSpacerItem* my_spacer{nullptr};
+    QBoxLayout* layout{nullptr};
+    QSpacerItem* spacer{nullptr};
     if(orientation == Orientation::Vertical)
     {
-        my_layout = new QVBoxLayout;
-        my_spacer = new QSpacerItem(20, 16777215, QSizePolicy::Expanding, QSizePolicy::Preferred);
+        layout = new QVBoxLayout;
+        spacer = new QSpacerItem(20, 16777215, QSizePolicy::Expanding, QSizePolicy::Preferred);
     }
     else
     {
-        my_layout = new QHBoxLayout;
-        my_spacer = new QSpacerItem(16777215, 20, QSizePolicy::Expanding, QSizePolicy::Preferred);
+        layout = new QHBoxLayout;
+        spacer = new QSpacerItem(16777215, 20, QSizePolicy::Expanding, QSizePolicy::Preferred);
     }
-    my_layout->setMargin(m_margin);
-    my_layout->addSpacerItem(my_spacer);
-    setLayout(my_layout);
+    layout->setMargin(m_margin);
+    layout->addSpacerItem(spacer);
+    setLayout(layout);
 }
 
 // https://forum.qt.io/topic/162168/how-to-round-the-corners-of-a-frameless-qwidget-when-also-applying-acrylic-effects/8
@@ -117,8 +117,7 @@ void Dashboard::mousePressEvent(QMouseEvent* event)
 
 void Dashboard::mouseReleaseEvent(QMouseEvent* event)
 {
-    m_left_button = event->button() == Qt::MouseButton::LeftButton ? false : m_left_button;
-    m_right_button = event->button() == Qt::MouseButton::RightButton ? false : m_right_button;
+    m_left_button = m_right_button = false;
 
     const auto pos = event->globalPos();
 
@@ -475,9 +474,6 @@ void Dashboard::slot_animate_del()
 
     if(animation)
     {
-        // ActionStack items{domain, sensor.data(), w, h};
-        // m_actions[animation] = items;
-
         animation->setDuration(500);
         animation->setEasingCurve(QEasingCurve::OutSine);
         connect(animation, &QAbstractAnimation::finished, this, &Dashboard::slot_del_sensor_animation_complete);
@@ -491,5 +487,4 @@ void Dashboard::slot_del_sensor_animation_complete()
 {
     auto animation = qobject_cast<QPropertyAnimation*>(sender());
     animation->deleteLater();
-    // repaint();
 }
