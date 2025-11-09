@@ -1,4 +1,5 @@
 #include <random>
+// #include <iostream>
 
 #include <QDir>
 #include <QUrl>
@@ -17,13 +18,13 @@
 
 #define dumpvar(x) qDebug()<<#x<<'='<<x
 
-Collector* collector{nullptr};
+Collector* collector{nullptr};      // (appears to be) required for custom log processing
 QtMessageHandler originalHandler{nullptr};
 
 Collector::Collector(int argc, char *argv[])
     : QCoreApplication(argc, argv)
 {
-    collector = this; // this is required for custom log processing
+    collector = this;
 
     m_start_time = QDateTime::currentDateTime();
 
@@ -55,9 +56,16 @@ Collector::Collector(int argc, char *argv[])
 
     load_settings();
 
+    auto description = tr("\nUsing the folloing efaults:\n\t Port:\t%1\n\t IPv4:\t%2\n\t IPv6:\t%3\n\t  Log:\t%4\n\tQueue:\t%5")
+        .arg(SharedTypes::MULTICAST_PORT)
+        .arg(SharedTypes::MULTICAST_IPV4, SharedTypes::MULTICAST_IPV6, tr("<console>"),
+#ifdef QT_LINUX
+        "/tmp/dash-d"
+#endif
+        );
     // Process command-line options
     QCommandLineParser parser;
-    parser.setApplicationDescription("Sensor data collector for Dash'd");
+    parser.setApplicationDescription(description);
     parser.addHelpOption();
     parser.addVersionOption();
 
@@ -148,7 +156,7 @@ Collector::Collector(int argc, char *argv[])
             // Ensure the full path exists
             if(!p.mkpath("."))
             {
-                qCritical() << "Could not create directory " << target_path << ".";
+                qCritical() << tr("Could not create directory ") << target_path << ".";
                 qApp->exit(1);
                 return;
             }
@@ -158,19 +166,21 @@ Collector::Collector(int argc, char *argv[])
         m_log = FilePtr(new QFile(log_file_name));
         if(!m_log->open(QIODevice::WriteOnly | QIODevice::Append))
         {
-            qCritical() << "Could not create/open log file \"" << log_file_name<< "\".";
+            qCritical() << tr("Could not create/open log file \"") << log_file_name<< "\".";
             qApp->exit(1);
             return;
         }
-
-        qInfo() << "Logging output to " << log_file_name << ".";
-    }
-    else
-    {
-        qInfo() << "Logging output to console.";
     }
 
     setLog_path(target_path);
+
+    qInfo() << tr("-----------------------------[ Start ]-----------------------------");
+    qInfo() << applicationName() << " v" << applicationVersion();
+
+    if(m_log.isNull())
+        qInfo() << tr("Logging output to console.");
+    else
+        qInfo() << tr("Logging output to \"") << m_log->fileName() << "\".";
 
     // ----- 2. Create a Watcher for the file system
     target_path = parser.value(targetDirectoryOption);
@@ -180,7 +190,7 @@ Collector::Collector(int argc, char *argv[])
         // Ensure the full path exists
         if(!p.mkpath("."))
         {
-            qCritical() << "Could not create queue directory \"" << target_path << "\".";
+            qCritical() << tr("Could not create queue directory \"") << target_path << "\".";
             qApp->exit(1);
             return;
         }
@@ -192,7 +202,7 @@ Collector::Collector(int argc, char *argv[])
     m_watcher->addPath(target_path);
     connect(m_watcher.data(), &QFileSystemWatcher::directoryChanged, this, &Collector::slot_queue_event);
 
-    qInfo() << "Watching queue location \"" << target_path << "\".";
+    qInfo() << tr("Watching queue location \"") << target_path << "\".";
 
     // ----- 3. Create Sender instance for IPv4 or IPv6
     auto port = parser.value(portOption).toUShort();
@@ -203,7 +213,7 @@ Collector::Collector(int argc, char *argv[])
     {
         // This is an error
 
-        qCritical() << "Only one of IPv4 or IPv6 may be specified.";
+        qCritical() << tr("Only one of IPv4 or IPv6 may be specified.");
         qApp->exit(1);
         return;
     }
@@ -211,7 +221,7 @@ Collector::Collector(int argc, char *argv[])
     {
         // This is an error
 
-        qCritical() << "An address for either IPv4 or IPv6 must be specified.";
+        qCritical() << tr("An address for either IPv4 or IPv6 must be specified.");
         qApp->exit(1);
         return;
     }
@@ -221,18 +231,18 @@ Collector::Collector(int argc, char *argv[])
     {
         // for IPv4
         m_sender = SenderPtr(new Sender(port, ip4group, QString()));
-        qInfo() << "Sending sensor data to IPv4 multicast " << qUtf8Printable(ip4group) << ":" << port << ".";
+        qInfo() << tr("Sending sensor data to IPv4 multicast ") << qUtf8Printable(ip4group) << ":" << port << ".";
     }
     else
     {
         // for IPv6
         m_sender = SenderPtr(new Sender(port, QString(), ip6group));
-        qInfo() << "Sending sensor data to IPv6 multicast " << ip6group << ":" << port << ".";
+        qInfo() << tr("Sending sensor data to IPv6 multicast ") << ip6group << ":" << port << ".";
     }
 
     if(parser.isSet(cleanOption))
     {
-        qInfo() << "Clear queue of older sensor data:";
+        qInfo() << tr("Clear queue of older sensor data:");
         QDir directory(m_queue_path);
         QStringList sensor_files = directory.entryList(QStringList() << "*.json",QDir::Files);
         foreach(QString filename, sensor_files)
@@ -399,7 +409,8 @@ void Collector::process_queue()
                 auto data = sensor_file.readAll();
                 sensor_file.close();
 
-                auto doc = QJsonDocument::fromJson(data);
+                QJsonParseError error;
+                auto doc = QJsonDocument::fromJson(data, &error);
                 if(!doc.isNull())
                 {
                     QJsonObject object = doc.object();
@@ -434,15 +445,15 @@ void Collector::process_queue()
                         }
                         else
                         {
-                            qWarning() << "Sensor \"" << sensor_name << "\" used invalid state value: \"" << sensor_state << "\".";
+                            qWarning() << tr("Sensor \"") << sensor_name << tr("\" used invalid state value: \"") << sensor_state << "\".";
                         }
                     }
                 }
                 else
                 {
                     // The JSON doc did not load--it could be empty, or it could be partial.
-                    // We'll leave it alone for now, and try to process it on the never event.
-                    qWarning() << "Failed to load Sensor data file: \"" << process_file << "\".";
+                    // We'll leave it alone for now, and try to process it on the next event.
+                    qWarning() << tr("Failed to load Sensor data file: \"") << process_file << "\": " << error.errorString();
                 }
             }
         }
@@ -458,7 +469,7 @@ void Collector::process_queue()
             // Remove it from the cache, and notify the multicast group
             // that this sensor is offline.
 
-            auto warning_msg = QStringLiteral("Sensor data file \"%1\" has been removed.").arg(key);
+            auto warning_msg = tr("Sensor data file \"%1\" has been removed.").arg(key);
             qWarning() << warning_msg;
 
             auto sensor_name = m_queue_cache[key][0].toString();
@@ -599,17 +610,17 @@ void Collector::load_settings()
         }
 
         // Generate a random IPv4 multicast address
-        {
-            std::random_device rd;
-            std::mt19937 rd_mt(rd());
-            std::uniform_int_distribution<> byte(0, 255);
+        // {
+        //     std::random_device rd;
+        //     std::mt19937 rd_mt(rd());
+        //     std::uniform_int_distribution<> byte(0, 255);
 
-            auto b1{byte(rd_mt)};
-            auto b2{byte(rd_mt)};
-            auto b3{byte(rd_mt)};
+        //     auto b1{byte(rd_mt)};
+        //     auto b2{byte(rd_mt)};
+        //     auto b3{byte(rd_mt)};
 
-            m_ip4_group = QString("239.%1.%2.%3").arg(b1).arg(b2).arg(b3);
-        }
+        //     m_ip4_group = QString("239.%1.%2.%3").arg(b1).arg(b2).arg(b3);
+        // }
 
         save_settings();
     }
@@ -618,9 +629,9 @@ void Collector::load_settings()
 
     settings.beginGroup("Collector");
         m_id = settings.value("id", 0).toULongLong();
-        m_ip4_group = settings.value("ip4group", "").toString();
-        m_ip6_group = settings.value("ip6group", "").toString();
-        m_port = settings.value("port", 0).toString().toUShort();
+        m_ip4_group = settings.value("ip4group", SharedTypes::MULTICAST_IPV4).toString();
+        m_ip6_group = settings.value("ip6group", SharedTypes::MULTICAST_IPV6).toString();
+        m_port = settings.value("port", SharedTypes::MULTICAST_PORT).toString().toUShort();
         m_queue_path = settings.value("queue-folder", "").toString();
         m_log_path = settings.value("log-folder", "").toString();
         m_clean_on_startup = settings.value("clean-on-startup", true).toBool();

@@ -8,11 +8,11 @@ Sender::Sender(uint16_t group_port, const QString& ipv4_group, const QString& ip
     m_group_address_ipv6(ipv6_group),
     m_group_port(group_port)
 {
-    // force binding to their respective families
+    // Force binding to their respective families
     m_udp_socket_ipv4.bind(QHostAddress(QHostAddress::AnyIPv4), 0);
     m_udp_socket_ipv6.bind(QHostAddress(QHostAddress::AnyIPv6), m_udp_socket_ipv4.localPort());
 
-    // make sure packets remain in this subnet
+    // Make sure packets remain in this subnet
     // (one is the default, but I'm doing it explicitly to remind
     // you, dear reader, of the limitation)
     m_udp_socket_ipv4.setSocketOption(QAbstractSocket::MulticastTtlOption, 1);

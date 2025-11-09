@@ -2,7 +2,7 @@
 
 #include <QApplication>
 
-#include "Sensor.h"
+// #include "Sensor.h"
 
 int main(int argc, char *argv[])
 {

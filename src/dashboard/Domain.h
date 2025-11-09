@@ -13,6 +13,14 @@
 constexpr int offline_timeout =       10 /* seconds */ * 1000 /* to milliseconds */;
 constexpr int housekeeping_interval = 5                * 1000;
 
+//---------------------------------------------------------------------------
+// Domain
+//
+// A Domain contains one or more Sensors.  In practice, a Domain is a
+// computer system with assets and resources to be monitored.
+//
+//---------------------------------------------------------------------------
+
 class Domain : public QObject
 {
     Q_OBJECT

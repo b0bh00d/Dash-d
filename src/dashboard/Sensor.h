@@ -9,7 +9,14 @@
 
 #include "../SharedTypes.h"
 
-// An Sensor is a monitored resource within a Domain.
+//---------------------------------------------------------------------------
+// Sensor
+//
+// A Sensor is concered with the state of an asset or resource.  In practice,
+// a Sensor is a program of some type running on a computer system, reporting
+// the state of an asset or resource on a regular basis.
+//
+//---------------------------------------------------------------------------
 
 class Sensor : public QObject
 {

@@ -39,6 +39,10 @@ Dialog::Dialog(QWidget *parent)
 
     ui->setupUi(this);
 
+    ui->line_MulticastGroupPort->setPlaceholderText(QString::number(SharedTypes::MULTICAST_PORT));
+    ui->line_MulticastGroupIPv4->setPlaceholderText(SharedTypes::MULTICAST_IPV4);
+    ui->line_MulticastGroupIPv6->setPlaceholderText(SharedTypes::MULTICAST_IPV4);
+
     m_version = QString("%1.%2").arg(major).arg(minor);
     if(patch)
         m_version = QString("%1.%2").arg(m_version).arg(patch);

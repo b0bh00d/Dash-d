@@ -1,0 +1,18 @@
+# Install: ~/.config/systemd/user
+# Enable: systemctl --user enable dash-d-collector.service
+# Start: systemctl --user start dash-d-collector.service
+
+[Unit]
+Description=Dash'd Collector
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/bob/.local/bin/collector --log-directory=/home/bob/.local/state/collector
+
+# Give the script some time to startup
+TimeoutSec=10
+
+[Install]
+WantedBy=default.target
+

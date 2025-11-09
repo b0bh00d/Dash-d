@@ -108,7 +108,7 @@
            </size>
           </property>
           <property name="placeholderText">
-           <string>22834</string>
+           <string/>
           </property>
          </widget>
         </item>
@@ -205,7 +205,7 @@
            </size>
           </property>
           <property name="placeholderText">
-           <string>239.255.77.15</string>
+           <string/>
           </property>
          </widget>
         </item>
@@ -296,7 +296,7 @@
            </size>
           </property>
           <property name="placeholderText">
-           <string>ff12::1870</string>
+           <string/>
           </property>
          </widget>
         </item>

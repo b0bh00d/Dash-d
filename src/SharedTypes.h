@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMap>
+#include <QString>
 
 constexpr int major = 0;
 constexpr int minor = 1;
@@ -13,6 +14,11 @@ public:
     ~SharedTypes() = default;
 
 public:    // typedefs and enums
+    // These values are also the placeholder text in the Dashboard UI
+    static const char* MULTICAST_IPV4;
+    static const char* MULTICAST_IPV6;
+    static constexpr int MULTICAST_PORT{22834};
+
     enum class MessageType {
         Sensor,     // Sensor data
         Offline,    // Informational: Sensor has gone offline

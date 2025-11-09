@@ -8,6 +8,15 @@
 
 #include "Sender.h"
 
+//---------------------------------------------------------------------------
+// Dash'd Collector
+//
+// The Collector gathers up Sensor data from the local machine (i.e., Domain)
+// and sends it along to the multicast group.
+//
+// Requirements: apt install libqt5network5
+//---------------------------------------------------------------------------
+
 class Collector : public QCoreApplication
 {
     Q_OBJECT

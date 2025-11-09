@@ -20,7 +20,13 @@
 #include "Domain.h"
 #include "Sensor.h"
 
-// The Dashboard class is a display container for Senors.
+//---------------------------------------------------------------------------
+// Dashboard
+//
+// The Dashboard is a visual display of the health of an asset or resource as
+// reported by a Sensor in a Domain.
+//
+//---------------------------------------------------------------------------
 
 class Dashboard : public QFrame
 {
@@ -81,6 +87,7 @@ private:    // typedefs and enums
 private:    // methods
     void        add_sensor(Domain* domain, Sensor* sensor, int w, int h);
     void        del_sensor();
+    QString     gen_tooltip(const QString& base, const QString& msg = QString());
 
 private:    // data members
     int         m_margin{15};

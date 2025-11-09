@@ -31,3 +31,6 @@ SharedTypes::Text2StateMap SharedTypes::MsgText2State = {
     { "deceased", SharedTypes::SensorState::Deceased },
     { "offline", SharedTypes::SensorState::Offline },
 };
+
+const char* SharedTypes::MULTICAST_IPV4{"239.255.77.15"};
+const char* SharedTypes::MULTICAST_IPV6{"ff12::1870"};
