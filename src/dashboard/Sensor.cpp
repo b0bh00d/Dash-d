@@ -23,7 +23,17 @@ void Sensor::set_state(SharedTypes::SensorState state, const QString& message)
     if(state != m_state)
     {
         m_state = state;
-        m_last_update = QDateTime::currentDateTime();
+
+        ++m_update_count;
+
+        auto now = QDateTime::currentDateTime();
+        if(!m_last_update.isNull())
+        {
+            // Update our totals
+            m_update_deltas += now.msecsTo(m_last_update);
+        }
+
+        m_last_update = now;
         emit signal_state_changed();
     }
 }

@@ -70,4 +70,6 @@ void Domain::slot_housekeeping()
 
     foreach(const QString& name, names_to_delete)
         del_sensor(name);
+
+    // TODO: Detect a disruption ("offline") based on the update cadence of a sensor.
 }

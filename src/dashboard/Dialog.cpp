@@ -143,12 +143,14 @@ void Dialog::slot_test_critical_sensor()
     if(++m_test_count == 2)
         QTimer::singleShot(5000, this, &Dialog::slot_test_remove_sensor);
     else
+        // Test adding another sensor
         QTimer::singleShot(5000, this, &Dialog::slot_test_insert_sensor);
 }
 
 void Dialog::slot_test_remove_sensor()
 {
     // Test the "offline" state
+    // ("offline" sensors will be cleared automatically after a delay)
     m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count - 1), SharedTypes::SensorState::Offline);
     // m_domains[123456789]->del_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count - 1));
 }
