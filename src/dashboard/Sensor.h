@@ -33,7 +33,7 @@ public:
     SharedTypes::SensorState     state() const { return m_state; }
     const QString&  message() const { return m_message; }
     QDateTime       last_update() const { return m_last_update; }
-    qint64          average_update() const { return m_update_deltas / m_update_count; }
+    qint64          average_update() const { return m_update_count ? m_update_deltas / m_update_count : m_update_count; }
 
     void            set_state(SharedTypes::SensorState state, const QString& message = QString());
 

@@ -48,7 +48,7 @@ Dialog::Dialog(QWidget *parent)
     if(patch)
         m_version = QString("%1.%2").arg(m_version).arg(patch);
     setWindowTitle(tr("Dash'd v%1 by Bob Hood").arg(m_version));
-    setWindowIcon(QIcon(":/images/Tray.png"));
+    setWindowIcon(QIcon(":/images/Dash-d.png"));
 
 #ifdef QT_LINUX
     ui->check_AutoStart->setVisible(false);
@@ -119,7 +119,7 @@ void Dialog::slot_test_insert_sensor()
     }
 
     auto domain = m_domains[123456789];
-    auto sensor = SensorPtr(new Sensor(QString("brix_reactor_monitor_%1").arg(m_test_count)));
+    auto sensor = SensorPtr(new Sensor(QString("reactor_monitor_%1").arg(m_test_count)));
     sensor->set_state(SharedTypes::SensorState::Healthy);
     domain->add_sensor(sensor);
 
@@ -129,15 +129,15 @@ void Dialog::slot_test_insert_sensor()
 void Dialog::slot_test_poor_sensor()
 {
     // Test the "poor" state
-    m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Poor,
+    m_domains[123456789]->update_sensor(QString("reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Poor,
         tr("Disk space below 20%"));
-    QTimer::singleShot(5000, this, &Dialog::slot_test_critical_sensor);
+    // QTimer::singleShot(5000, this, &Dialog::slot_test_critical_sensor);
 }
 
 void Dialog::slot_test_critical_sensor()
 {
     // Test the "critical" state
-    m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Critical,
+    m_domains[123456789]->update_sensor(QString("reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Critical,
         tr("Disk space below 10%"));
 
     if(++m_test_count == 2)
@@ -151,8 +151,8 @@ void Dialog::slot_test_remove_sensor()
 {
     // Test the "offline" state
     // ("offline" sensors will be cleared automatically after a delay)
-    m_domains[123456789]->update_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count - 1), SharedTypes::SensorState::Offline);
-    // m_domains[123456789]->del_sensor(QString("brix_reactor_monitor_%1").arg(m_test_count - 1));
+    m_domains[123456789]->update_sensor(QString("reactor_monitor_%1").arg(m_test_count - 1), SharedTypes::SensorState::Offline);
+    // m_domains[123456789]->del_sensor(QString("reactor_monitor_%1").arg(m_test_count - 1));
 }
 #endif
 

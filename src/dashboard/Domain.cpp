@@ -66,10 +66,25 @@ void Domain::slot_housekeeping()
             if(last_update.msecsTo(now) > offline_timeout)
                 names_to_delete.append(sensor->name());
         }
+        else
+        {
+#ifndef TEST
+            // Based on their update cadence, are any of the Sensors de facto offline?
+            auto cadence = sensor->average_update();
+            if(cadence)
+            {
+                // How long since the last update?
+                auto delta = sensor->last_update().msecsTo(now);
+                if(delta >= (cadence * m_offline_detection_multiplier))
+                {
+                    // Consider this one offline.
+                    update_sensor(sensor->name(), SharedTypes::SensorState::Offline, tr("Domain detected offline sensor based on update cadence."));
+                }
+            }
+#endif
+        }
     }
 
     foreach(const QString& name, names_to_delete)
         del_sensor(name);
-
-    // TODO: Detect a disruption ("offline") based on the update cadence of a sensor.
 }

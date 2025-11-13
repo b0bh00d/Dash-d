@@ -353,28 +353,6 @@ void Collector::slot_queue_event(const QString& file)
 // extension.  These will be Sensor data files.
 void Collector::process_queue()
 {
-    // The Collector queue works like this:
-    //
-    // Sensors (which are any process in any language that monitor a system resource) will
-    // create a file in the queue folder for each resource they are monitoring.  The file
-    // name is unimportant to Collector; the extension must be ".json" in order to be regarded.
-    //
-    // This file-per-resource-per-domain is persistent for the runtime of Collector.  The Sensor
-    // process will update the Resource file, at an interval of its choosing, and Collector will
-    // monitor the timestamp of the file.  When the timestamp changes, Collector will re-load the
-    // file contents and send it on to the multicast group.  The 'sensor_name' attribute
-    // within the JSON file should not be changed within the same file.  If a Sensor process
-    // must change the sensor name, it should first remove the existing sensor data file, and
-    // then create a new one with the updated name.
-    //
-    // If an existing file disappears (perhaps the Sensor process goes offline), Collector will
-    // remove it from its database, and notify the multicast group that the resource is no
-    // longer being monitored.
-    //
-    // Collector will clear the queue folder on start.  This is to remove any lingering data and
-    // start reporting fresh.  Sensors should be coded for this behavior, if necessary (i.e.,
-    // a resource file could suddenly disappear, so should not be held open).
-
     QDir directory(m_queue_path);
     QStringList sensor_files = directory.entryList(QStringList() << "*.json",QDir::Files);
 

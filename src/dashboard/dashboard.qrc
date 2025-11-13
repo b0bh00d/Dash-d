@@ -6,8 +6,8 @@
         <file>images/Poor.png</file>
         <file>images/Deceased.png</file>
         <file>images/Empty.png</file>
-        <file>images/Tray.png</file>
         <file>images/Offline.png</file>
         <file>images/OfflineEmpty.png</file>
+        <file>images/Dash-d.png</file>
     </qresource>
 </RCC>

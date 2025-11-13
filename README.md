@@ -5,10 +5,10 @@
 # Dash'd
 A simple, annunciator-based dashboard for desktop systems.
 
-**No AI was used in the construction of this project.**
-
 ## Summary
 Dahs'd is a system that gathers and displays simple status information for monitored assets and resources.
+
+_**No AI was used in the creation of this project.**_
 
 ## Design
 Dash'd is composed of three logical components: Sensors, Collectors, and Dashboards.  The Collectors and Dashboards communicate using IPv4/IPv6 multicasting.
@@ -17,6 +17,8 @@ Dash'd is composed of three logical components: Sensors, Collectors, and Dashboa
 The Dash'd system utilizes multicasting, which creates a network "ring" where data is published without the need for active receivers.  Any number of senders can be connected to the multicast group, and any number of receivers can be listening on the "ring" entirely without knowledge of the presence of any other connection (classic "Observer" pattern).  Receivers in this case are Dashboards listening for Sensor data sent by Collectors.  There is no limit to the number senders and receivers that can exists in the multicast group.
 
 Multicasting in Dash'd is limited to the current subnet.  This means that domains to be monitored must have network "line-of-sight" to Dashboards prepared to display the state of their assets.  This is currently a hard-coded limitation within Dash'd, but it can be altered to allow the multicast group to be global (i.e., be visible on the Internet).
+
+It is important to emphasize that the network parameters used by Collectors--IP adddress and port--exactly match those used by the Dashboards.  In this fashion, the multicast "ring" is established and data sent is successfully received.  Out of the box, both Collectors and Dashboards are coded to use the same default settings, so they will use the same "ring" when started.  You can override these settings of course, but be sure you do so with all processes.
 
 ### Sensor
 A Sensor is actually not a direct component of the Dash'd project.  Rather, they are independent processes running on the domain that are actively monitoring one or more assets and/or resources.  Sensors are written by the user, and can be constructed in any language or fashion chosen by the user, as long as they can produce the expected output.
@@ -38,8 +40,24 @@ A Sensor will generate a JSON file to be deposited within view of the Collector.
   - The Sensor message is an optional value that should be used to report the rationale for the `sensor_state` value.
     - E.g., A `poor` state might be generated if disk space falls below some designated threshold.  A message might report that as `File system /media/data has less than 20% free space`.
 
+This data will be display as a tooltip when you hover over a Sensor display:
+<p align="center">
+    <img alt="tooltip" src="https://private-user-images.githubusercontent.com/4536448/513999473-4bca7e15-bb1c-4e90-a16e-aea3d61909a2.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjMwNTM3NDMsIm5iZiI6MTc2MzA1MzQ0MywicGF0aCI6Ii80NTM2NDQ4LzUxMzk5OTQ3My00YmNhN2UxNS1iYjFjLTRlOTAtYTE2ZS1hZWEzZDYxOTA5YTIucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MTExMyUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTExMTNUMTcwNDAzWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9MTk1NGRhNmZlODI5OGI2YjdlZTE2YzBiZGY0MDA4ODMwMWQ3NWU3Nzg4NmFhOTZkNzI4YjMwMWZjMjk5OWUxYiZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.e6Ty06PuTkO65yqf17A697-0tE6MuQRDb_O7u5undaI">
+</p>
+
+A sample Sensor (Python) is included for Linux that will monitor RAID health.
+
 ### Collector
 The Collector is a CLI process intneded to run as a service/daemon on a domain with assets and resources to be monitored.  It monitors a folder on the local domain where Sensors have been directed to deposit their updates.
 
+A sample systemd service file is included in the Collector source folder that contains instructions for installation and activation.
+
+The Collector queue works like this:
+ - Sensors (which are any process in any language that monitor a system resource) will create a "report" file in the queue folder for each resource they are monitoring.  The file name is unimportant to the Collector; the extension must be ".json" in order to be regarded.
+ - This file-per-resource-per-domain is persistent for the runtime of the Collector.  The Sensor process will update the report file, at an interval of its choosing, and the Collector will monitor the timestamp of the file.  When the timestamp changes, the Collector will re-load the file contents and send it on to the multicast group.  The 'sensor_name' attribute within the JSON file should not be changed within the same file.  If a Sensor process must change the sensor name, it should first remove the existing sensor data file, and then create a new one with the updated name.
+ - If an existing report file disappears (perhaps the Sensor process gracefully goes offline), the Collector will remove it from its database, and notify the multicast group that the resource is no longer being monitored.
+ - The Collector will clear the queue folder on start.  This is to remove any lingering data and start reporting fresh.  Sensors should be coded for this behavior, if necessary (i.e., a report file could suddenly disappear, so should not be held open).
+
 ### Dashboard
 The Dashboard is the visual display of the status of one or more Sensor reports.
+

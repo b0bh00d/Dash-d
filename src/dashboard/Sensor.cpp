@@ -30,7 +30,7 @@ void Sensor::set_state(SharedTypes::SensorState state, const QString& message)
         if(!m_last_update.isNull())
         {
             // Update our totals
-            m_update_deltas += now.msecsTo(m_last_update);
+            m_update_deltas += m_last_update.msecsTo(now);
         }
 
         m_last_update = now;
