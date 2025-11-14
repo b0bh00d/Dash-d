@@ -23,16 +23,16 @@ It is important to emphasize that the network parameters used by Collectors--IP 
 ### Sensor
 A Sensor is actually not a direct component of the Dash'd project.  Rather, they are independent processes running on the domain that are actively monitoring one or more assets and/or resources.  Sensors are written by the user, and can be constructed in any language or fashion chosen by the user, as long as they can produce the expected output.
 
-Each Sensor process will produce a report in the form of a JSON file, and then deposit that report into a pre-designated folder at reaonsable intervals.  The Collector process will monitor this folder for activity, and will ensure that that any Dashboard processes on the "ring" will receive the information for display.
+Each Sensor process will produce a report in the form of a JSON file, and then deposit that report into a pre-designated folder at reaonsable intervals.  The Collector process will monitor this folder for activity, and will ensure that that any Dashboard processes on the network "ring" will receive the information for display.
 
 #### Sensor data
 A Sensor will generate a JSON file to be deposited within view of the Collector.  This Sensor data file can contain up to three elements that will be regarded by the Collector:
 
-- sensor_name
+- sensor_name (required)
   - This is a name that is unique within the domain.  It should be descriptive enough that somebody viewing it will know without doubt what asset or resource it represents.
   - E.g., a Sensor that is monitoring the health of a RAID might name itself `raid_monitor_md0`.
   - The Collector will provide the domain name to listeners on the "ring" along with the Sensor data, so the Dashboard will include it in the display.  E.g., for a domain named "corrin", the Dashboard would display the Sensor name as `corrin::raid_monitor_md0`.
-- sensor_state
+- sensor_state (required)
   - States are strings with simplified values:
     - `healthy`, `poor`, `critical` or `deceased`
   - Each of these has a visual representation in the Dashboard display.
@@ -40,7 +40,7 @@ A Sensor will generate a JSON file to be deposited within view of the Collector.
   - The Sensor message is an optional value that should be used to report the rationale for the `sensor_state` value.
     - E.g., A `poor` state might be generated if disk space falls below some designated threshold.  A message might report that as `File system /media/data has less than 20% free space`.
 
-This data will be display as a tooltip when you hover over a Sensor display:
+This detail will be shown as a tooltip when you hover over a Sensor display:
 <p align="center">
     <img alt="tooltip" src="https://private-user-images.githubusercontent.com/4536448/513999473-4bca7e15-bb1c-4e90-a16e-aea3d61909a2.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjMxMzYwNjIsIm5iZiI6MTc2MzEzNTc2MiwicGF0aCI6Ii80NTM2NDQ4LzUxMzk5OTQ3My00YmNhN2UxNS1iYjFjLTRlOTAtYTE2ZS1hZWEzZDYxOTA5YTIucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MTExNCUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTExMTRUMTU1NjAyWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NTg5MDFkMmExYmRkMWFjY2MxY2M2NDU3ZTAwMTEzMjUxMDc5YmIwNjRlODVhMjMzNmFjMzBlZmI2NTZkOWY0OSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.2gKgL_pmobJZXh31MMxnZ-Gv2nZZWnJAzuTCD16oRjQ">
 </p>
@@ -48,29 +48,29 @@ This data will be display as a tooltip when you hover over a Sensor display:
 A sample Sensor (Python) is included for Linux that will monitor RAID health.
 
 ### Collector
-The Collector is a CLI process intneded to run as a service/daemon on a domain with assets and resources to be monitored.  It monitors a folder on the local domain where Sensors have been directed to deposit their updates.
-
-A sample systemd service file is included in the Collector source folder that contains instructions for installation and activation.
+The Collector is a CLI process intended to run as a service/daemon on a domain with assets and resources to be monitored.  It monitors a folder on the local domain where Sensors have been directed to deposit their updates.
 
 The Collector queue works like this:
  - Sensors (which are any process in any language that monitor a system resource) will create a "report" file in the queue folder for each resource they are monitoring.  The file name is unimportant to the Collector; the extension must be ".json" in order to be regarded.
- - This file-per-resource-per-domain is persistent for the runtime of the Collector.  The Sensor process will update the report file, at an interval of its choosing, and the Collector will monitor the timestamp of the file.  When the timestamp changes, the Collector will re-load the file contents and send it on to the multicast group.  The 'sensor_name' attribute within the JSON file should not be changed within the same file.  If a Sensor process must change the sensor name, it should first remove the existing sensor data file, and then create a new one with the updated name.
+ - This file-per-resource-per-domain is persistent for the runtime of the Collector.  The Sensor process will update the report file, at an interval of its choosing, and the Collector will monitor the timestamp of the file.  When the timestamp changes, the Collector will re-load the file contents and send it on to the multicast group.  The `sensor_name` attribute within the JSON file should not be changed within the same persistent file.  If a Sensor process must change the sensor name, it should first remove the existing sensor data file, and then create a new one with the updated name.
  - If an existing report file disappears (perhaps the Sensor process gracefully goes offline), the Collector will remove it from its database, and notify the multicast group that the resource is no longer being monitored.
  - The Collector will clear the queue folder on start.  This is to remove any lingering data and start reporting fresh.  Sensors should be coded for this behavior, if necessary (i.e., a report file could suddenly disappear, so should not be held open).
 
+ A sample systemd service file is included in the Collector source folder that contains instructions for installation and activation.
+
 ### Dashboard
-The Dashboard is the visual display of the status of one or more Sensor reports.
+The Dashboard is the visual display of the status of one or more Sensor reports.  (The following is an state indicator test.)
 
 <p align="center">
   <img src="https://private-user-images.githubusercontent.com/4536448/514512701-34854edc-c27f-48da-bcd2-5cc0a5262a68.gif?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjMxMzc4MTgsIm5iZiI6MTc2MzEzNzUxOCwicGF0aCI6Ii80NTM2NDQ4LzUxNDUxMjcwMS0zNDg1NGVkYy1jMjdmLTQ4ZGEtYmNkMi01Y2MwYTUyNjJhNjguZ2lmP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MTExNCUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTExMTRUMTYyNTE4WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NjZiMGFiZGQyZDE5ODRmMmUxMGNhMGYxMGE1YzAxMTkwNWZkZWI3Njk0MTUzYTM1OWJjYzFkNjljMTRiZjAwZSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.MVIQ2a4Db8yhijNOpdrtwoDY40TxBcXHZ-xPkt95AtM">
 </p>
 
-A Dashboard will not be visible until at least one Sensor has reported in.
+A Dashboard will not be visible until at least one Sensor has reported in.  If a state degrades (e.g., `healthy` -> `poor`), there is a visual indicator that the state has degraded in order to gain attention (as shown above).
 
 Dashboards currently extend horizontally to the right, or vertically downward, selectable in the settings.  (There's code to extend leftward for horizontal and upward for vertical, but needs more work for window positioning.)
 
-A Dashboard can be moved to any location you wish on the screen by left-click-and-draggin on an area of the window that does not have a Sensor displayed.  You can also lock the Dashboard on top of all other windows on the sceen.
+A Dashboard can be moved to any location you wish on the screen by left-click-and-dragging on an area of the window that does not have a Sensor displayed.  Via the settings, you can also lock the Dashboard on top of all other windows on the sceen.
 
-Sensor displays will appear as soon as a report is received; they may also disappear if the Sensor goes offline.  A Sensor can go offline gracefully, or the Dashboard may detect that a report from a Sensor is overdue.
+Sensor displays will appear as soon as a report is received; they may also disappear if the Sensor goes offline.  A Sensor can go offline gracefully, or the Dashboard may detect that a report from a Sensor is overdue and summarily deem that Sensor offline.
 
-When a Sensor goes offline, there is a specific display indicator, which will remain in the Dashboard for some delayed amount to make sure it is noticed.  Once that delay expires, the Sensor display is automatically removed.
+When a Sensor goes offline, there is a specific display indicator, which will remain in the Dashboard for some delayed amount of time to make sure it is noticed.  Once that delay expires, the Sensor display is automatically removed from the Dashboard.
