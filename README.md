@@ -8,10 +8,10 @@ A simple, annunciator-based dashboard for desktop systems.
 ## Summary
 Dahs'd is a system that gathers and displays simple status information for monitored assets and resources.
 
-_**No AI was used in the creation of this project.**_
-
 ## Design
 Dash'd is composed of three logical components: Sensors, Collectors, and Dashboards.  The Collectors and Dashboards communicate using IPv4/IPv6 multicasting.
+
+_**No AI was used in the creation of this project.**_
 
 ### Network
 The Dash'd system utilizes multicasting, which creates a network "ring" where data is published without the need for active receivers.  Any number of senders can be connected to the multicast group, and any number of receivers can be listening on the "ring" entirely without knowledge of the presence of any other connection (classic "Observer" pattern).  Receivers in this case are Dashboards listening for Sensor data sent by Collectors.  There is no limit to the number senders and receivers that can exists in the multicast group.
@@ -42,7 +42,7 @@ A Sensor will generate a JSON file to be deposited within view of the Collector.
 
 This data will be display as a tooltip when you hover over a Sensor display:
 <p align="center">
-    <img alt="tooltip" src="https://private-user-images.githubusercontent.com/4536448/513999473-4bca7e15-bb1c-4e90-a16e-aea3d61909a2.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjMwNTM3NDMsIm5iZiI6MTc2MzA1MzQ0MywicGF0aCI6Ii80NTM2NDQ4LzUxMzk5OTQ3My00YmNhN2UxNS1iYjFjLTRlOTAtYTE2ZS1hZWEzZDYxOTA5YTIucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MTExMyUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTExMTNUMTcwNDAzWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9MTk1NGRhNmZlODI5OGI2YjdlZTE2YzBiZGY0MDA4ODMwMWQ3NWU3Nzg4NmFhOTZkNzI4YjMwMWZjMjk5OWUxYiZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.e6Ty06PuTkO65yqf17A697-0tE6MuQRDb_O7u5undaI">
+    <img alt="tooltip" src="https://private-user-images.githubusercontent.com/4536448/513999473-4bca7e15-bb1c-4e90-a16e-aea3d61909a2.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjMxMzYwNjIsIm5iZiI6MTc2MzEzNTc2MiwicGF0aCI6Ii80NTM2NDQ4LzUxMzk5OTQ3My00YmNhN2UxNS1iYjFjLTRlOTAtYTE2ZS1hZWEzZDYxOTA5YTIucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MTExNCUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTExMTRUMTU1NjAyWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NTg5MDFkMmExYmRkMWFjY2MxY2M2NDU3ZTAwMTEzMjUxMDc5YmIwNjRlODVhMjMzNmFjMzBlZmI2NTZkOWY0OSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.2gKgL_pmobJZXh31MMxnZ-Gv2nZZWnJAzuTCD16oRjQ">
 </p>
 
 A sample Sensor (Python) is included for Linux that will monitor RAID health.
@@ -61,3 +61,16 @@ The Collector queue works like this:
 ### Dashboard
 The Dashboard is the visual display of the status of one or more Sensor reports.
 
+<p align="center">
+  <img src="https://private-user-images.githubusercontent.com/4536448/514512701-34854edc-c27f-48da-bcd2-5cc0a5262a68.gif?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjMxMzc4MTgsIm5iZiI6MTc2MzEzNzUxOCwicGF0aCI6Ii80NTM2NDQ4LzUxNDUxMjcwMS0zNDg1NGVkYy1jMjdmLTQ4ZGEtYmNkMi01Y2MwYTUyNjJhNjguZ2lmP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MTExNCUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTExMTRUMTYyNTE4WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NjZiMGFiZGQyZDE5ODRmMmUxMGNhMGYxMGE1YzAxMTkwNWZkZWI3Njk0MTUzYTM1OWJjYzFkNjljMTRiZjAwZSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.MVIQ2a4Db8yhijNOpdrtwoDY40TxBcXHZ-xPkt95AtM">
+</p>
+
+A Dashboard will not be visible until at least one Sensor has reported in.
+
+Dashboards currently extend horizontally to the right, or vertically downward, selectable in the settings.  (There's code to extend leftward for horizontal and upward for vertical, but needs more work for window positioning.)
+
+A Dashboard can be moved to any location you wish on the screen by left-click-and-draggin on an area of the window that does not have a Sensor displayed.  You can also lock the Dashboard on top of all other windows on the sceen.
+
+Sensor displays will appear as soon as a report is received; they may also disappear if the Sensor goes offline.  A Sensor can go offline gracefully, or the Dashboard may detect that a report from a Sensor is overdue.
+
+When a Sensor goes offline, there is a specific display indicator, which will remain in the Dashboard for some delayed amount to make sure it is noticed.  Once that delay expires, the Sensor display is automatically removed.

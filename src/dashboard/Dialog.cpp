@@ -131,7 +131,7 @@ void Dialog::slot_test_poor_sensor()
     // Test the "poor" state
     m_domains[123456789]->update_sensor(QString("reactor_monitor_%1").arg(m_test_count), SharedTypes::SensorState::Poor,
         tr("Disk space below 20%"));
-    // QTimer::singleShot(5000, this, &Dialog::slot_test_critical_sensor);
+    QTimer::singleShot(5000, this, &Dialog::slot_test_critical_sensor);
 }
 
 void Dialog::slot_test_critical_sensor()
