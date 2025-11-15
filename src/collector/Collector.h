@@ -28,14 +28,15 @@ public:
     static void logHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
     void        handle_log(QtMsgType type, const QString &msg) const;
 
-    QString     queue_path() const;
-    void        setQueue_path(const QString &newQueue_path);
+    QString     queue_path() const { return m_queue_path; }
+    void        setQueue_path(const QString &newQueue_path) { m_queue_path = newQueue_path; }
 
-    QString log_path() const;
-    void setLog_path(const QString &newLog_path);
+    QString     log_path() const { return m_log_path; }
+    void        setLog_path(const QString &newLog_path) { m_log_path = newLog_path; }
 
 private slots:
-    void        slot_queue_event(const QString&);
+    void        slot_directory_event(const QString&);
+    void        slot_file_event(const QString&);
 
 private:    // typedefs and enums
     using WatcherPtr = QSharedPointer<QFileSystemWatcher>;
@@ -44,6 +45,8 @@ private:    // typedefs and enums
     using QueueMap = QMap<QString, SensorDataList>;
 
 private:    // methods
+    void        process_sensor_offline(const QString& file);
+    bool        process_sensor_update(const QString& file, QDateTime last_modified);
     void        process_queue();
 #if 0
     void        process_sensor_data();

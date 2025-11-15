@@ -200,7 +200,8 @@ Collector::Collector(int argc, char *argv[])
 
     m_watcher = WatcherPtr(new QFileSystemWatcher());
     m_watcher->addPath(target_path);
-    connect(m_watcher.data(), &QFileSystemWatcher::directoryChanged, this, &Collector::slot_queue_event);
+    connect(m_watcher.data(), &QFileSystemWatcher::directoryChanged, this, &Collector::slot_directory_event);
+    connect(m_watcher.data(), &QFileSystemWatcher::fileChanged, this, &Collector::slot_file_event);
 
     qInfo() << tr("Watching queue location \"") << target_path << "\".";
 
@@ -324,31 +325,156 @@ void Collector::handle_log(QtMsgType type, const QString &msg) const
     }
 }
 
-QString Collector::queue_path() const
+void Collector::process_sensor_offline(const QString& file)
 {
-    return m_queue_path;
+    // This data file has gone missing since our last sweep.
+    // Remove it from the cache, and notify the multicast group
+    // that this sensor is offline.
+
+    auto warning_msg = tr("Sensor data file \"%1\" has been removed.").arg(file);
+    qWarning() << warning_msg;
+
+    auto sensor_name = m_queue_cache[file][0].toString();
+    auto sensor_offline = QString("{ \"domain_id\" : \"%1\", \"domain_name\" : \"%2\","
+                                " \"type\" : \"%3\","
+                                " \"sensor_name\" : \"%4\" }")
+        .arg(m_id)
+        .arg(QUrl::toPercentEncoding(m_name),
+             SharedTypes::MsgType2Text[SharedTypes::MessageType::Offline],
+             QUrl::toPercentEncoding(sensor_name));
+
+    // Send the domain error to the multicast group
+    m_sender->send_datagram(sensor_offline.toUtf8());
+
+    m_watcher->removePath(file);
+    m_queue_cache.remove(file);
 }
 
-void Collector::setQueue_path(const QString &newQueue_path)
+bool Collector::process_sensor_update(const QString& file, QDateTime last_modified)
 {
-    m_queue_path = newQueue_path;
+    bool result = false;
+
+    QFile sensor_file(file);
+    if(sensor_file.open(QIODevice::ReadOnly))
+    {
+        auto data = sensor_file.readAll();
+        sensor_file.close();
+
+        QJsonParseError error;
+        auto doc = QJsonDocument::fromJson(data, &error);
+        if(!doc.isNull())
+        {
+            QJsonObject object = doc.object();
+
+            if(object.contains("sensor_name") && object.contains("sensor_state"))
+            {
+                auto sensor_name = object["sensor_name"].toString();
+                auto sensor_state= object["sensor_state"].toString().toLower();
+                QString sensor_message;
+                if(object.contains("sensor_message"))
+                    sensor_message = object["sensor_message"].toString();
+
+                if(SharedTypes::MsgText2State.contains(sensor_state))
+                {
+                    auto sensor_data = QString("{ \"domain_id\" : \"%1\", \"domain_name\" : \"%2\", "
+                                               " \"type\" : \"%3\", "
+                                               " \"sensor_name\" : \"%4\", \"sensor_state\" : \"%5\", "
+                                               " \"sensor_message\" : \"%6\" }")
+                        .arg(m_id)
+                        .arg(QUrl::toPercentEncoding(m_name),
+                            SharedTypes::MsgType2Text[SharedTypes::MessageType::Sensor],
+                            QUrl::toPercentEncoding(sensor_name), sensor_state,
+                            QUrl::toPercentEncoding(sensor_message));
+
+                    // Send the sensor data to the multicast group
+                    m_sender->send_datagram(sensor_data.toUtf8());
+
+                    if(m_queue_cache.contains(file))
+                        m_queue_cache[file][1] = last_modified;
+                    else
+                    {
+                        // Add/update the cache info
+                        m_queue_cache[file] = SensorDataList();
+                        m_queue_cache[file].append(sensor_name);
+                        m_queue_cache[file].append(last_modified);
+                    }
+
+                    result = true;
+                }
+                else
+                {
+                    qWarning() << tr("Sensor \"") << sensor_name << tr("\" used invalid state value: \"") << sensor_state << "\".";
+                }
+            }
+        }
+        else
+        {
+            // The JSON doc did not load--it could be empty, or it could be partial.
+            // We'll leave it alone for now, and try to process it on the next event.
+            qWarning() << tr("Failed to load Sensor data file: \"") << file << "\": " << error.errorString();
+        }
+    }
+
+    return result;
 }
 
-QString Collector::log_path() const
+void Collector::slot_directory_event(const QString& dir)
 {
-    return m_log_path;
+    Q_UNUSED(dir)
+
+    // Perform a delta on the folder and see if there are any new or removed files
+
+    QDir directory(m_queue_path);
+    QStringList sensor_files = directory.entryList(QStringList() << "*.json",QDir::Files);
+
+    // Step 1: Process new Sensor data files
+    foreach(QString filename, sensor_files)
+    {
+        auto full_file_path = directory.absoluteFilePath(filename);
+        QString new_file; // populated with a filename if this file is eligible for processing
+        const QFileInfo info(full_file_path);
+
+        if(info.lastModified() > m_start_time)
+        {
+            if(!m_queue_cache.contains(full_file_path))
+            {
+                // This is a new entry in the queue
+                new_file = full_file_path;
+            }
+        }
+        else
+            qInfo() << tr("Ignoring outdated Sensor file '") << filename << "'";
+
+        if(!new_file.isEmpty())
+        {
+            qInfo() << "Processing Sensor add: \"" << new_file << "\"";
+            if(process_sensor_update(new_file, info.lastModified()))
+            {
+                // The file was added to our cache, update our
+                // file system watcher to tell us about events
+
+                m_watcher->addPath(new_file);
+            }
+        }
+    }
+
+    // Step 2: Identify missing files in the cache
+    auto keys = m_queue_cache.keys();
+    foreach(QString key, keys)
+    {
+        if(!QFile::exists(key))
+        {
+            qInfo() << "Processing Sensor offline: \"" << key << "\"";
+            process_sensor_offline(key);
+        }
+    }
 }
 
-void Collector::setLog_path(const QString &newLog_path)
+void Collector::slot_file_event(const QString& file)
 {
-    m_log_path = newLog_path;
-}
-
-void Collector::slot_queue_event(const QString& file)
-{
-    Q_UNUSED(file)
-
-    process_queue();
+    const QFileInfo info(file);
+    qInfo() << "Processing Sensor update: \"" << file << "\"";
+    process_sensor_update(file, info.lastModified());
 }
 
 // Scan the Collector queue directory, and process any files that have the .json
@@ -384,7 +510,7 @@ void Collector::process_queue()
             }
         }
         else
-            qInfo() << tr("Ignoring outdated report file '") << filename << "'";
+            qInfo() << tr("Ignoring outdated Sensor file '") << filename << "'";
 
         if(!process_file.isEmpty())
         {

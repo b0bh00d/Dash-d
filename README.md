@@ -73,4 +73,4 @@ A Dashboard can be moved to any location you wish on the screen by left-click-an
 
 Sensor displays will appear as soon as a report is received; they may also disappear if the Sensor goes offline.  A Sensor can go offline gracefully, or the Dashboard may detect that a report from a Sensor is overdue and summarily deem that Sensor offline.
 
-When a Sensor goes offline (indicated by the "X" display above), there is a specific display indicator, which will remain in the Dashboard for some delayed amount of time to make sure it is noticed.  Once that delay expires, the Sensor display is automatically removed from the Dashboard.
+When a Sensor goes offline (indicated by the "X" display above), the display for that Sensor will remain in the Dashboard for some delayed amount of time to make sure it is noticed.  Once that delay expires, the Sensor display is automatically removed from the Dashboard.
