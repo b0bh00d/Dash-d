@@ -129,7 +129,7 @@ Collector::Collector(int argc, char *argv[])
         m_ip4_group = parser.value(ip4Option);
         m_ip6_group = parser.value(ip6Option);
         m_port = parser.value(portOption).toUShort();
-        m_clean_on_startup = parser.isSet(cleanOption);
+        // m_clean_on_startup = parser.isSet(cleanOption);
 
         save_settings();
 
@@ -240,6 +240,7 @@ Collector::Collector(int argc, char *argv[])
         qInfo() << tr("Sending sensor data to IPv6 multicast ") << ip6group << ":" << port << ".";
     }
 
+#if 0   // We cannot guarantee that we have sufficient permissions to remove files in this folder
     if(parser.isSet(cleanOption))
     {
         qInfo() << tr("Clear queue of older sensor data:");
@@ -251,6 +252,7 @@ Collector::Collector(int argc, char *argv[])
             qInfo() << "\t" << filename;
         }
     }
+#endif
 }
 
 Collector::~Collector()
@@ -363,21 +365,26 @@ void Collector::process_queue()
         QString process_file; // populated with a filename if this file is eligible for processing
         const QFileInfo info(full_file_path);
 
-        if(m_queue_cache.contains(full_file_path))
+        if(info.lastModified() > m_start_time)
         {
-            auto last_modified = m_queue_cache[full_file_path][1].toDateTime();
-
-            // Has this file been updated?
-            if(info.lastModified() > last_modified)
+            if(m_queue_cache.contains(full_file_path))
             {
-                // Yes, reload its data and inform the multicast group
+                auto last_modified = m_queue_cache[full_file_path][1].toDateTime();
+
+                // Has this file been updated?
+                if(info.lastModified() > last_modified)
+                {
+                    // Yes, reload its data and inform the multicast group
+                    process_file = full_file_path;
+                }
+            }
+            else    // This is a new entry in the queue
+            {
                 process_file = full_file_path;
             }
         }
-        else    // This is a new entry in the queue
-        {
-            process_file = full_file_path;
-        }
+        else
+            qInfo() << tr("Ignoring outdated report file '") << filename << "'";
 
         if(!process_file.isEmpty())
         {
@@ -612,7 +619,7 @@ void Collector::load_settings()
         m_port = settings.value("port", SharedTypes::MULTICAST_PORT).toString().toUShort();
         m_queue_path = settings.value("queue-folder", "").toString();
         m_log_path = settings.value("log-folder", "").toString();
-        m_clean_on_startup = settings.value("clean-on-startup", true).toBool();
+        // m_clean_on_startup = settings.value("clean-on-startup", true).toBool();
     settings.endGroup();
 }
 
@@ -629,6 +636,6 @@ void Collector::save_settings()
         settings.setValue("port", m_port);
         settings.setValue("queue-folder", m_queue_path);
         settings.setValue("log-folder", m_log_path);
-        settings.setValue("clean-on-startup", m_clean_on_startup);
+        // settings.setValue("clean-on-startup", m_clean_on_startup);
     settings.endGroup();
 }

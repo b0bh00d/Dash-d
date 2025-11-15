@@ -52,14 +52,14 @@ The Collector is a CLI process intended to run as a service/daemon on a domain w
 
 The Collector queue works like this:
  - Sensors (which are any process in any language that monitor a system resource) will create a "report" file in the queue folder for each resource they are monitoring.  The file name is unimportant to the Collector; the extension must be ".json" in order to be regarded.
- - This file-per-resource-per-domain is persistent for the runtime of the Collector.  The Sensor process will update the report file, at an interval of its choosing, and the Collector will monitor the timestamp of the file.  When the timestamp changes, the Collector will re-load the file contents and send it on to the multicast group.  The `sensor_name` attribute within the JSON file should not be changed within the same persistent file.  If a Sensor process must change the sensor name, it should first remove the existing sensor data file, and then create a new one with the updated name.
+ - This file-per-resource-per-domain is persistent for the runtime of a Collector.  The Sensor process will update the report file, at an interval of its choosing, and the Collector will monitor the timestamp of the file.  When the timestamp changes, the Collector will re-load the file contents and send it on to the multicast group.  The `sensor_name` attribute within the JSON file should not be changed within the same persistent file.  If a Sensor process must change the sensor name, it should first remove the existing sensor data file, and then create a new one with the updated name.
  - If an existing report file disappears (perhaps the Sensor process gracefully goes offline), the Collector will remove it from its database, and notify the multicast group that the resource is no longer being monitored.
- - The Collector will clear the queue folder on start.  This is to remove any lingering data and start reporting fresh.  Sensors should be coded for this behavior, if necessary (i.e., a report file could suddenly disappear, so should not be held open).
+ - A Collector will ignore any existing report files in the queue with time stamps older than its start time.  This is to avoid reporting any obsolete data.  This means Sensors should remove report files from the queue as part of a graceful shutdown.
 
  A sample systemd service file is included in the Collector source folder that contains instructions for installation and activation.
 
 ### Dashboard
-The Dashboard is the visual display of the status of one or more Sensor reports.  (The following is an state indicator test.)
+The Dashboard is the visual display of the status of one or more Sensor reports.  (The following is a state indicator test, not a live capture...)
 
 <p align="center">
   <img src="https://private-user-images.githubusercontent.com/4536448/514512701-34854edc-c27f-48da-bcd2-5cc0a5262a68.gif?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjMxMzc4MTgsIm5iZiI6MTc2MzEzNzUxOCwicGF0aCI6Ii80NTM2NDQ4LzUxNDUxMjcwMS0zNDg1NGVkYy1jMjdmLTQ4ZGEtYmNkMi01Y2MwYTUyNjJhNjguZ2lmP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MTExNCUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTExMTRUMTYyNTE4WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NjZiMGFiZGQyZDE5ODRmMmUxMGNhMGYxMGE1YzAxMTkwNWZkZWI3Njk0MTUzYTM1OWJjYzFkNjljMTRiZjAwZSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.MVIQ2a4Db8yhijNOpdrtwoDY40TxBcXHZ-xPkt95AtM">
@@ -73,4 +73,4 @@ A Dashboard can be moved to any location you wish on the screen by left-click-an
 
 Sensor displays will appear as soon as a report is received; they may also disappear if the Sensor goes offline.  A Sensor can go offline gracefully, or the Dashboard may detect that a report from a Sensor is overdue and summarily deem that Sensor offline.
 
-When a Sensor goes offline, there is a specific display indicator, which will remain in the Dashboard for some delayed amount of time to make sure it is noticed.  Once that delay expires, the Sensor display is automatically removed from the Dashboard.
+When a Sensor goes offline (indicated by the "X" display above), there is a specific display indicator, which will remain in the Dashboard for some delayed amount of time to make sure it is noticed.  Once that delay expires, the Sensor display is automatically removed from the Dashboard.
