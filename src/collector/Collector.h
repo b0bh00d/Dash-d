@@ -47,10 +47,6 @@ private:    // typedefs and enums
 private:    // methods
     void        process_sensor_offline(const QString& file);
     bool        process_sensor_update(const QString& file, QDateTime last_modified);
-    void        process_queue();
-#if 0
-    void        process_sensor_data();
-#endif
 
     void        load_settings();
     void        save_settings();
