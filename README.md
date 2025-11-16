@@ -26,7 +26,7 @@ A Sensor is actually not a direct component of the Dash'd project.  Rather, they
 Each Sensor process will produce a report in the form of a JSON file, and then deposit that report into a pre-designated folder at reaonsable intervals.  The Collector process will monitor this folder for activity, and will ensure that that any Dashboard processes on the network "ring" will receive the information for display.
 
 #### Sensor data
-A Sensor will generate a JSON file to be deposited within view of the Collector.  This Sensor data file can contain up to three elements that will be regarded by the Collector:
+A Sensor will generate a JSON file to be deposited within view of the Collector.  This file represents some kind of "event" related to the asset. This Sensor event file can contain up to three elements that will be regarded by the Collector:
 
 - sensor_name (required)
   - This is a name that is unique within the domain.  It should be descriptive enough that somebody viewing it will know without doubt what asset or resource it represents.
