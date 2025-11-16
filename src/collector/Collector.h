@@ -45,6 +45,7 @@ private:    // typedefs and enums
     using QueueMap = QMap<QString, SensorDataList>;
 
 private:    // methods
+    void        initialize_watcher();
     void        process_sensor_offline(const QString& file);
     bool        process_sensor_update(const QString& file, QDateTime last_modified);
 

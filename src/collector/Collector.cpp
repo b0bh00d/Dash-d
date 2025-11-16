@@ -174,7 +174,7 @@ Collector::Collector(int argc, char *argv[])
 
     setLog_path(target_path);
 
-    qInfo() << tr("-----------------------------[ Start ]-----------------------------");
+    qInfo() << tr("─────────────────────────────┤ Start ├─────────────────────────────");
     qInfo() << applicationName() << " v" << applicationVersion();
 
     if(m_log.isNull())
@@ -199,9 +199,10 @@ Collector::Collector(int argc, char *argv[])
     setQueue_path(target_path);
 
     m_watcher = WatcherPtr(new QFileSystemWatcher());
-    m_watcher->addPath(target_path);
     connect(m_watcher.data(), &QFileSystemWatcher::directoryChanged, this, &Collector::slot_directory_event);
     connect(m_watcher.data(), &QFileSystemWatcher::fileChanged, this, &Collector::slot_file_event);
+
+    initialize_watcher();
 
     qInfo() << tr("Watching queue location \"") << target_path << "\".";
 
@@ -261,6 +262,8 @@ Collector::~Collector()
     // Tear down what we constructed above.
     // (technically speaking, the smart pointers will
     // clean up themselves, but I like the bookkeeping)
+
+    qInfo() << tr("Shutting down.");
 
     if(m_log)
         m_log.clear();
@@ -322,6 +325,37 @@ void Collector::handle_log(QtMsgType type, const QString &msg) const
     {
         QTextStream out(m_log.data());
         out << "[" << tag << "] " << QDateTime::currentDateTime().toString() << ": " << msg << "\n";
+    }
+}
+
+void Collector::initialize_watcher()
+{
+    // Prime the QFileSystemWatcher on the queue path.
+    // Locate every existing Sensor event file in the queue on startup, and add them
+    // as watch points in the QFileSystemWatcher instance.  If we don't, we
+    // won't get notified when they are updated.
+
+    qInfo() << tr("Initializing file system watcher.");
+
+    m_watcher->addPath(m_queue_path);
+
+    QDir directory(m_queue_path);
+    QStringList sensor_files = directory.entryList(QStringList() << "*.json",QDir::Files);
+    QStringList messages;
+    foreach(QString filename, sensor_files)
+    {
+        auto full_file_path = directory.absoluteFilePath(filename);
+        messages.append(tr("Adding existing Sensor event file \"%1\".").arg(full_file_path));
+        m_watcher->addPath(full_file_path);
+    }
+
+    int count = 0;
+    foreach(const auto& msg, messages)
+    {
+        if(++count == messages.count())
+            qInfo() << "└─ " << msg;
+        else
+            qInfo() << "├─ " << msg;
     }
 }
 
@@ -447,7 +481,7 @@ void Collector::slot_directory_event(const QString& dir)
 
         if(!new_file.isEmpty())
         {
-            qInfo() << "Processing Sensor add: \"" << new_file << "\"";
+            qInfo() << tr("Processing Sensor add: \"") << new_file << "\"";
             if(process_sensor_update(new_file, info.lastModified()))
             {
                 // The file was added to our cache, update our
@@ -464,7 +498,7 @@ void Collector::slot_directory_event(const QString& dir)
     {
         if(!QFile::exists(key))
         {
-            qInfo() << "Processing Sensor offline: \"" << key << "\"";
+            qInfo() << tr("Processing Sensor offline: \"") << key << "\"";
             process_sensor_offline(key);
         }
     }
@@ -473,7 +507,19 @@ void Collector::slot_directory_event(const QString& dir)
 void Collector::slot_file_event(const QString& file)
 {
     const QFileInfo info(file);
-    qInfo() << "Processing Sensor update: \"" << file << "\"";
+
+    if(m_queue_cache.contains(file))
+    {
+        // Avoid bounce.
+        const auto now = QDateTime::currentDateTime();
+        if(abs(m_queue_cache[file][1].toDateTime().msecsTo(now)) < 1000)
+        {
+            // qInfo() << tr("└─ Sensor event \"") << file << tr("\" is updating too fast; ignoring.");
+            return;
+        }
+    }
+
+    qInfo() << tr("Processing Sensor event: \"") << file << "\"";
     process_sensor_update(file, info.lastModified());
 }
 
