@@ -91,7 +91,7 @@ Dialog::Dialog(QWidget *parent)
     connect(m_trayIcon, &QSystemTrayIcon::messageClicked, this, &Dialog::slot_tray_message_clicked);
     connect(m_trayIcon, &QSystemTrayIcon::activated, this, &Dialog::slot_tray_icon_activated);
 
-    m_trayIcon->setIcon(QIcon(":/images/Tray.png"));
+    m_trayIcon->setIcon(QIcon(":/images/Dash-d.png"));
     m_trayIcon->setToolTip(tr("Dash'd v%1").arg(m_version));
     build_tray_menu();
 
