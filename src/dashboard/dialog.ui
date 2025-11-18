@@ -596,24 +596,9 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
-       <widget class="QPlainTextEdit" name="text_Log">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>100</height>
-         </size>
-        </property>
-        <property name="frameShape">
-         <enum>QFrame::NoFrame</enum>
-        </property>
-        <property name="tabChangesFocus">
+       <widget class="QListWidget" name="list_Log">
+        <property name="alternatingRowColors">
          <bool>true</bool>
-        </property>
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
-        <property name="backgroundVisible">
-         <bool>false</bool>
         </property>
        </widget>
       </item>

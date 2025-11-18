@@ -421,6 +421,9 @@ void Dialog::slot_multicast_group_join()
 
 void Dialog::slot_process_peer_event(const QByteArray& datagram)
 {
+    while(ui->list_Log->count() > 50)
+        ui->list_Log->takeItem(0);
+
     auto doc{QJsonDocument::fromJson(datagram)};
     if(!doc.isNull())
     {
@@ -467,9 +470,9 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
                         else
                             domain->update_sensor(sensor_name, SharedTypes::MsgText2State[sensor_state], sensor_message);
 
-                        ui->text_Log->appendPlainText(
-                            QString("%1::%2::%3")
-                                .arg(domain_name, sensor_name, sensor_state)
+                        ui->list_Log->addItem(
+                            QString("%1: %2::%3::%4")
+                                .arg(QDateTime::currentDateTime().toString(), domain_name, sensor_name, sensor_state)
                         );
                     }
                     break;
@@ -486,9 +489,9 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
 
                         domain->update_sensor(sensor_name, SharedTypes::SensorState::Offline, sensor_message);
 
-                        ui->text_Log->appendPlainText(
-                            QString("%1::%2::Offline")
-                                .arg(domain_name, sensor_name)
+                        ui->list_Log->addItem(
+                            QString("%1: %2::%3::Offline")
+                                .arg(QDateTime::currentDateTime().toString(), domain_name, sensor_name)
                         );
                     }
                     break;
@@ -501,9 +504,9 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
                         auto sensor_name = QUrl::fromPercentEncoding(object["sensor_name"].toString().toUtf8());
                         auto domain_warning = object["domain_warning"].toString();
 
-                        ui->text_Log->appendPlainText(
-                            QString("%1::%2::Warning::%3")
-                                .arg(domain_name, sensor_name, domain_warning)
+                        ui->list_Log->addItem(
+                            QString("%1: %2::%3::Warning::%4")
+                                .arg(QDateTime::currentDateTime().toString(), domain_name, sensor_name, domain_warning)
                         );
                     }
                 case SharedTypes::MessageType::Error:
@@ -512,6 +515,10 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
             }
         }
     }
+
+    auto selected = ui->list_Log->selectedItems();
+    if(selected.count() == 0)
+        ui->list_Log->scrollToBottom();
 }
 
 void Dialog::slot_randomize_ipv4()

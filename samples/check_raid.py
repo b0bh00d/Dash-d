@@ -4,6 +4,7 @@
 # Check RAID by Bob Hood (A Dash'd Sensor)
 #
 # Monitor the health of supported RAIDs on this system.
+#
 # Should be run from cron at regular intervals.
 #-------------------------------------------------------
 
@@ -29,6 +30,7 @@ class RaidLevels:
     SUPPORTED_RAIDS=["raid0", "raid1", "raid5"]
 
 def construct_report(device: str, state: str, msg: str = "") -> Tuple[str, Mapping[str, str]]:
+    """ Construct the Sensor event report file """
     sensor_name = f"raid_monitor_{device}"
     sensor_filename = f"{device}.json"
 
@@ -36,7 +38,8 @@ def construct_report(device: str, state: str, msg: str = "") -> Tuple[str, Mappi
             "sensor_state" : state,
             "sensor_message" :  msg })
 
-def find_raids() -> Iterator[str]:
+def find_raids() -> Iterator[Tuple[str, int]]:
+    """ Locate all active arrays on the local system """
     data = open('/proc/mdstat', 'r').readlines()
     device_re = re.compile(r'^(md\d+) \: (.+)')
 
@@ -49,6 +52,7 @@ def find_raids() -> Iterator[str]:
                 yield (result.group(1), RaidLevels.NAMES.index(items[1]))
 
 def process_raids(sensor_path: str, test_mode: bool) -> None:
+    """ Apply hueristics to each RAID to determine its health """
     raid_devices_re = re.compile(r'Raid Devices : (\d+)')
     total_devices_re = re.compile(r'Total Devices : (\d+)')
     failed_devices_re = re.compile(r'Failed Devices : (\d+)')

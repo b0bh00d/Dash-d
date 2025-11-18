@@ -56,7 +56,7 @@ Collector::Collector(int argc, char *argv[])
 
     load_settings();
 
-    auto description = tr("\nUsing the folloing efaults:\n\t Port:\t%1\n\t IPv4:\t%2\n\t IPv6:\t%3\n\t  Log:\t%4\n\tQueue:\t%5")
+    auto description = tr("\nUsing the following efaults:\n\t Port:\t%1\n\t IPv4:\t%2\n\t IPv6:\t%3\n\t  Log:\t%4\n\tQueue:\t%5")
         .arg(SharedTypes::MULTICAST_PORT)
         .arg(SharedTypes::MULTICAST_IPV4, SharedTypes::MULTICAST_IPV6, tr("<console>"),
 #ifdef QT_LINUX
