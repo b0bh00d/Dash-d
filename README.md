@@ -54,7 +54,6 @@ The Collector queue works like this:
  - Sensors (which are any process in any language that monitor a system resource) will create a "report" file in the queue folder for each resource they are monitoring.  The file name is unimportant to the Collector; the extension must be ".json" in order to be regarded.
  - This file-per-resource-per-domain is persistent for the runtime of a Collector.  The Sensor process will update the report file, at an interval of its choosing, and the Collector will monitor the timestamp of the file.  When the timestamp changes, the Collector will re-load the file contents and send it on to the multicast group.  The `sensor_name` attribute within the JSON file should not be changed within the same persistent file.  If a Sensor process must change the sensor name, it should first remove the existing sensor data file, and then create a new one with the updated name.
  - If an existing report file disappears (perhaps the Sensor process gracefully goes offline), the Collector will remove it from its database, and notify the multicast group that the resource is no longer being monitored.
- - A Collector will ignore any existing report files in the queue with time stamps older than its start time.  This is to avoid reporting any obsolete data.  This means Sensors should remove report files from the queue as part of a graceful shutdown.
 
  A sample systemd service file is included in the Collector source folder that contains instructions for installation and activation.
 
@@ -74,3 +73,13 @@ A Dashboard can be moved to any location you wish on the screen by left-click-an
 Sensor displays will appear as soon as a report is received; they may also disappear if the Sensor goes offline.  A Sensor can go offline gracefully, or the Dashboard may detect that a report from a Sensor is overdue and summarily deem that Sensor offline.
 
 When a Sensor goes offline (indicated by the "X" display above), the display for that Sensor will remain in the Dashboard for some delayed amount of time to make sure it is noticed.  Once that delay expires, the Sensor display is automatically removed from the Dashboard.
+
+### Dependencies
+
+The Collector is a CLI process, so requires just the Qt 5 Networking module (and any secondary dependencies it has) be installed on the domain where it will run:
+
+`sudo apt-get install libqt5network5`
+
+By contrast, the Dashboard is a desktop application, so will require the default Qt 5 install in order to function:
+
+`sudo apt-get install qt5-default`

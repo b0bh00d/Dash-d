@@ -102,25 +102,21 @@ Collector::Collector(int argc, char *argv[])
     ip4Option.setDefaultValue(m_ip6_group);
     parser.addOption(ip6Option);
 
-    QCommandLineOption cleanOption(QStringList() << "clean-on-startup",
-            QCoreApplication::translate("main", "Clear all existing sensor-data files on startup."));
-    parser.addOption(cleanOption);
+    // QCommandLineOption cleanOption(QStringList() << "clean-on-startup",
+    //         QCoreApplication::translate("main", "Clear all existing sensor-data files on startup."));
+    // parser.addOption(cleanOption);
+
+    QCommandLineOption detectOffline(QStringList() << "detect-offline",
+            QCoreApplication::translate("main", "Heuristically attempt to detect that a Sensor has gone offline."));
+    parser.addOption(detectOffline);
 
     QCommandLineOption updateOption(QStringList() << "update-settings",
             QCoreApplication::translate("main", "Update persistent settings with current command line options and exit."));
     parser.addOption(updateOption);
 
-#if 0
-    QCommandLineOption olderOption(QStringList() << "ignore-older",
-            QCoreApplication::translate("main", "Ignore any existing sensor-data files on startup with timestamps older than our start time."));
-    parser.addOption(olderOption);
-#endif
-
     parser.process(*this);
 
-#if 0
-    m_ignore_older = parser.isSet(olderOption);
-#endif
+    m_detect_offline = parser.isSet(detectOffline);
 
     if(parser.isSet(updateOption))
     {
@@ -129,12 +125,10 @@ Collector::Collector(int argc, char *argv[])
         m_ip4_group = parser.value(ip4Option);
         m_ip6_group = parser.value(ip6Option);
         m_port = parser.value(portOption).toUShort();
-        // m_clean_on_startup = parser.isSet(cleanOption);
 
         save_settings();
 
-        qApp->exit(0);
-        return;
+        exit(0);
     }
 
     // Initialization steps:
@@ -242,19 +236,16 @@ Collector::Collector(int argc, char *argv[])
         qInfo() << tr("Sending sensor data to IPv6 multicast ") << ip6group << ":" << port << ".";
     }
 
-#if 0   // We cannot guarantee that we have sufficient permissions to remove files in this folder
-    if(parser.isSet(cleanOption))
+    if(m_detect_offline)
     {
-        qInfo() << tr("Clear queue of older sensor data:");
-        QDir directory(m_queue_path);
-        QStringList sensor_files = directory.entryList(QStringList() << "*.json",QDir::Files);
-        foreach(QString filename, sensor_files)
-        {
-            directory.remove(filename);
-            qInfo() << "\t" << filename;
-        }
+        m_housekeeping = TimerPtr(new QTimer());
+        m_housekeeping->setInterval(30000);
+        connect(m_housekeeping.data(), &QTimer::timeout, this, &Collector::slot_housekeeping);
+        m_housekeeping->start();
+        qInfo() << tr("Detecting offline Sensors.");
     }
-#endif
+    else
+        qInfo() << tr("Not detecting offline Sensors.");
 }
 
 Collector::~Collector()
@@ -264,6 +255,12 @@ Collector::~Collector()
     // clean up themselves, but I like the bookkeeping)
 
     qInfo() << tr("Shutting down.");
+
+    if(m_housekeeping)
+    {
+        m_housekeeping->stop();
+        m_housekeeping.clear();
+    }
 
     if(m_log)
         m_log.clear();
@@ -359,14 +356,13 @@ void Collector::initialize_watcher()
     }
 }
 
-void Collector::process_sensor_offline(const QString& file)
+void Collector::process_sensor_offline(const QString& file, const QString& msg)
 {
     // This data file has gone missing since our last sweep.
     // Remove it from the cache, and notify the multicast group
     // that this sensor is offline.
 
-    auto warning_msg = tr("Sensor data file \"%1\" has been removed.").arg(file);
-    qWarning() << warning_msg;
+    qWarning() << msg;
 
     auto sensor_name = m_queue_cache[file][0].toString();
     auto sensor_offline = QString("{ \"domain_id\" : \"%1\", \"domain_name\" : \"%2\","
@@ -380,8 +376,7 @@ void Collector::process_sensor_offline(const QString& file)
     // Send the domain error to the multicast group
     m_sender->send_datagram(sensor_offline.toUtf8());
 
-    m_watcher->removePath(file);
-    m_queue_cache.remove(file);
+    m_sensor_updates.remove(file);
 }
 
 bool Collector::process_sensor_update(const QString& file, QDateTime last_modified)
@@ -424,13 +419,23 @@ bool Collector::process_sensor_update(const QString& file, QDateTime last_modifi
                     m_sender->send_datagram(sensor_data.toUtf8());
 
                     if(m_queue_cache.contains(file))
+                    {
+                        auto delta = m_queue_cache[file][1].toDateTime().msecsTo(last_modified);
                         m_queue_cache[file][1] = last_modified;
+
+                        m_sensor_updates[file][0] += 1;
+                        m_sensor_updates[file][1] += delta;
+                    }
                     else
                     {
                         // Add/update the cache info
                         m_queue_cache[file] = SensorDataList();
                         m_queue_cache[file].append(sensor_name);
                         m_queue_cache[file].append(last_modified);
+
+                        m_sensor_updates[file] = UpdateDataList();
+                        m_sensor_updates[file].append(0);
+                        m_sensor_updates[file].append(0);
                     }
 
                     result = true;
@@ -499,7 +504,11 @@ void Collector::slot_directory_event(const QString& dir)
         if(!QFile::exists(key))
         {
             qInfo() << tr("Processing Sensor offline: \"") << key << "\"";
-            process_sensor_offline(key);
+            auto msg = tr("Sensor data file \"%1\" has been removed.").arg(key);
+            process_sensor_offline(key, msg);
+
+            m_watcher->removePath(key);
+            m_queue_cache.remove(key);
         }
     }
 }
@@ -521,6 +530,29 @@ void Collector::slot_file_event(const QString& file)
 
     qInfo() << tr("Processing Sensor event: \"") << file << "\"";
     process_sensor_update(file, info.lastModified());
+}
+
+void Collector::slot_housekeeping()
+{
+    auto now = QDateTime::currentDateTime();
+
+    auto keys = m_queue_cache.keys();
+    foreach(QString key, keys)
+    {
+        // Calculate the current average update cadence
+        auto average_cadence = m_sensor_updates[key][1] / m_sensor_updates[key][0];
+        if(average_cadence)
+        {
+            // How long since the last update?
+            auto delta = m_queue_cache[key][1].toDateTime().msecsTo(now);
+            if(delta >= (average_cadence * m_offline_detection_multiplier))
+            {
+                // Consider this one offline.
+                qInfo() << tr("Processing Sensor offline: \"") << key << "\" (avg: " << average_cadence << ", delta: " << delta << ")";
+                process_sensor_offline(key, tr("Sensor update overdue; flagging offline."));
+            }
+        }
+    }
 }
 
 void Collector::load_settings()

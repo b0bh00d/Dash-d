@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QFile>
+#include <QTimer>
 #include <QDateTime>
 #include <QCoreApplication>
 #include <QFileSystemWatcher>
@@ -37,16 +38,20 @@ public:
 private slots:
     void        slot_directory_event(const QString&);
     void        slot_file_event(const QString&);
+    void        slot_housekeeping();
 
 private:    // typedefs and enums
     using WatcherPtr = QSharedPointer<QFileSystemWatcher>;
     using FilePtr = QSharedPointer<QFile>;
+    using TimerPtr = QSharedPointer<QTimer>;
     using SensorDataList = QList<QVariant>; // stores sensor name and last modification timestamp
     using QueueMap = QMap<QString, SensorDataList>;
+    using UpdateDataList = QList<qint64>;
+    using UpdateMap = QMap<QString, UpdateDataList>;
 
 private:    // methods
     void        initialize_watcher();
-    void        process_sensor_offline(const QString& file);
+    void        process_sensor_offline(const QString& file, const QString& msg);
     bool        process_sensor_update(const QString& file, QDateTime last_modified);
 
     void        load_settings();
@@ -72,10 +77,12 @@ private:    // data members
     QString     m_ip6_group;
     uint16_t    m_port{20856};
 
-    bool        m_clean_on_startup{false};
-#if 0
-    bool        m_ignore_older{false};
-#endif
+    bool        m_detect_offline{false};
+    // By how much should we multiply a Sensor's update cadence in order
+    // to reasonably detect that it has gone offline?
+    int         m_offline_detection_multiplier{2};
+    UpdateMap   m_sensor_updates;
+    TimerPtr    m_housekeeping;
 
     QString     m_settings_filename;
 };

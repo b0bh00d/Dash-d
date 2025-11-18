@@ -57,10 +57,6 @@ private:    // data members
     SensorMap   m_sensors;
 
     TimerPtr    m_housekeeping{nullptr};
-
-    // By how much should we multiply a Sensor's update cadence in order
-    // to reasonably detect that it has gone offline?
-    int         m_offline_detection_multiplier{2};
 };
 
 using DomainPtr = QSharedPointer<Domain>;

@@ -6,6 +6,8 @@
 # Monitor the health of supported RAIDs on this system.
 #
 # Should be run from cron at regular intervals.
+#
+# No AI was used in the creation of this script.
 #-------------------------------------------------------
 
 import os
@@ -51,7 +53,7 @@ def find_raids() -> Iterator[Tuple[str, int]]:
             if (items[0] == "active") and (items[1] in RaidLevels.SUPPORTED_RAIDS):
                 yield (result.group(1), RaidLevels.NAMES.index(items[1]))
 
-def process_raids(sensor_path: str, test_mode: bool) -> None:
+def process_raids(sensor_path: str, test_mode: bool) -> int:
     """ Apply hueristics to each RAID to determine its health """
     raid_devices_re = re.compile(r'Raid Devices : (\d+)')
     total_devices_re = re.compile(r'Total Devices : (\d+)')
@@ -76,13 +78,13 @@ def process_raids(sensor_path: str, test_mode: bool) -> None:
 
         failed_devices = 0
         if raid_devices != total_devices:
-            result = failed_re.search(output)
+            result = failed_devices_re.search(output)
             assert result is not None, "ERROR: Failed to locate 'Failed devices' in output!"
             failed_devices = int(result.group(1))
 
         raid = RaidLevels.NAMES[device[1]].upper()
 
-        report_data: Tuple[str, Mapping[str, str]] = ()
+        report_data: Tuple[str, Mapping[str, str]] = ("", {})
         if failed_devices > 0:
             msg = f"{raid} '{device[0]}' is reporting {failed_devices}/{raid_devices} failing RAID members."
             match device[1]:
@@ -93,6 +95,7 @@ def process_raids(sensor_path: str, test_mode: bool) -> None:
                 case RaidLevels.RAID1:
                     # RAID1 is mirrored
                     # The loss of all but two members is poor; the loss of all but one is critical; the loss of all is fatal
+                    state = ""
                     if raid_devices == failed_devices:
                         state = SensorStates.NAMES[SensorStates.DECEASED]    # array is unusable
                     elif (raid_devices - failed_devices) >= 2:
@@ -107,13 +110,13 @@ def process_raids(sensor_path: str, test_mode: bool) -> None:
                         SensorStates.NAMES[SensorStates.DECEASED] if failed_devices > 1 else SensorStates.NAMES[SensorStates.CRITICAL],
                          msg)
                 case _:
-                    assert false, "ERROR: Unsupported RAID type '{raid}'"
+                    assert False, "ERROR: Unsupported RAID type '{raid}'"
         else:
             # operating normally
             msg = f"{raid} '{device[0]}' reports {raid_devices}/{total_devices} members operating normally."
             report_data = construct_report(device[0], SensorStates.NAMES[SensorStates.HEALTHY], msg)
 
-        assert len(report_data) > 0, "ERROR: Failed to construct report data!"
+        assert len(report_data[0]) > 0, "ERROR: Failed to construct report data!"
 
         if test_mode:
             print(f"{report_data[0]}: {json.dumps(report_data[1])}")
