@@ -1,0 +1,20 @@
+# Install: /etc/systemd/system/dash-d-check-space.service
+# Enable: systemctl enable dash-d-check-space.service
+# Start: systemctl start dash-d-check-space.service
+
+[Unit]
+Description=Dash'd Check-Space Sensor
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/bob/check-space.sh
+User=bob
+Group=bob
+
+# Give the script some time to startup
+TimeoutSec=10
+
+[Install]
+WantedBy=default.target
+
