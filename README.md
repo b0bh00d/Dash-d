@@ -49,7 +49,7 @@ This detail will be shown as a tooltip when you hover over a Sensor display:
     <img alt="tooltip" src="https://private-user-images.githubusercontent.com/4536448/513999473-4bca7e15-bb1c-4e90-a16e-aea3d61909a2.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjM1MTg0NTIsIm5iZiI6MTc2MzUxODE1MiwicGF0aCI6Ii80NTM2NDQ4LzUxMzk5OTQ3My00YmNhN2UxNS1iYjFjLTRlOTAtYTE2ZS1hZWEzZDYxOTA5YTIucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MTExOSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTExMTlUMDIwOTEyWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9MDY3OTQ0OWMzMjRlYzQ0M2YyMjM2OTcyN2QxZTgyMmZlNTc3NTg2OWJmMzM3MjMxMTQ1ZTJmNzlhYmFiZThkMyZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.XncgyFQGlReZisF5SSDxYQmIkioschAnZt9hkU7lQYY">
 </p>
 
-A sample Sensor (Python) is included for Linux that will monitor RAID health.
+Sample Sensors (written in Python) are included for Linux that will monitor RAID health and disk space.
 
 ### Collector
 The Collector is a CLI process intended to run as a service/daemon on a domain with assets and resources to be monitored.  It monitors a folder on the local domain where Sensors have been directed to deposit their updates.
