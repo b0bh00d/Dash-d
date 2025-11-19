@@ -18,9 +18,11 @@ win32 {
     DEFINES += QT_WIN
 }
 
+INCLUDEPATH += ../common ../common/network
+
 SOURCES += \
-        ../SharedTypes.cpp \
-        Sender.cpp \
+        ../common/SharedTypes.cpp \
+        ../common/network/Sender.cpp \
         Collector.cpp \
         main.cpp
 
@@ -30,7 +32,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
-    ../SharedTypes.h \
+    ../common/SharedTypes.h \
+    ../common/network/Sender.h \
     Logging.h \
-    Sender.h \
     Collector.h

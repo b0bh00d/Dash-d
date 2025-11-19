@@ -14,7 +14,7 @@
 
 #include "Collector.h"
 #include "Logging.h"
-#include "../SharedTypes.h"
+#include "SharedTypes.h"
 
 #define dumpvar(x) qDebug()<<#x<<'='<<x
 

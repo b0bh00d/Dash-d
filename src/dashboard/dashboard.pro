@@ -1,4 +1,4 @@
-QT       += core gui network
+QT += core gui network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -14,44 +14,31 @@ mac {
 
 unix:!mac {
     DEFINES += QT_LINUX
-    #INCLUDEPATH += ../miniaudio
 }
 
 win32 {
     DEFINES += QT_WIN
-
-    # for Registry API
-    #LIBS += -ladvapi32
-
-    # CONFIG(static) {
-    #     # make sure we match the linkage for Crypto++
-    #     CONFIG(debug, debug|release) {
-    #         QMAKE_CFLAGS += /MTd
-    #         QMAKE_CXXFLAGS += /MTd
-    #     } else {
-    #         QMAKE_CFLAGS += /MT
-    #         QMAKE_CXXFLAGS += /MT
-    #     }
-    # }
 }
 
 #DEFINES += TEST
 
+INCLUDEPATH += ../common ../common/network
+
 SOURCES += \
-    ../SharedTypes.cpp \
+    ../common/SharedTypes.cpp \
+    ../common/network/Receiver.cpp \
     Dashboard.cpp \
     Domain.cpp \
-    Receiver.cpp \
     Sensor.cpp \
     main.cpp \
     Dialog.cpp
 
 HEADERS += \
-    ../SharedTypes.h \
+    ../common/SharedTypes.h \
+    ../common/network/Receiver.h \
     Dashboard.h \
     Domain.h \
     Packet.h \
-    Receiver.h \
     Sensor.h \
     Dialog.h
 
