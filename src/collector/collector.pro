@@ -21,10 +21,11 @@ win32 {
 INCLUDEPATH += ../common ../common/network
 
 SOURCES += \
-        ../common/SharedTypes.cpp \
-        ../common/network/Sender.cpp \
-        Collector.cpp \
-        main.cpp
+    ../common/SharedTypes.cpp \
+    ../common/network/Receiver.cpp \
+    ../common/network/Sender.cpp \
+    Collector.cpp \
+    main.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -33,6 +34,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 HEADERS += \
     ../common/SharedTypes.h \
+    ../common/network/Receiver.h \
     ../common/network/Sender.h \
     Logging.h \
     Collector.h

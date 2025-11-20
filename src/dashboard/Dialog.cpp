@@ -276,8 +276,8 @@ void Dialog::slot_quit()
 
     m_trayIcon->hide();
 
-    if (m_multicast_receiver)
-        m_multicast_receiver.clear();
+    m_multicast_sender.clear();
+    m_multicast_receiver.clear();
 
     save_settings();
 
@@ -354,6 +354,7 @@ void Dialog::slot_multicast_group_join()
     {
         ui->button_Channels_Join->setText(tr("Join"));
 
+        m_multicast_sender.clear();
         m_multicast_receiver.clear();
         m_dashboard.clear();
 
@@ -406,8 +407,14 @@ void Dialog::slot_multicast_group_join()
             m_randomized_addresses = false;
         }
 
+        m_multicast_sender.reset(new Sender(group_port, ipv4_multcast_group, ipv6_multcast_group, this));
         m_multicast_receiver.reset(new Receiver(group_port, ipv4_multcast_group, ipv6_multcast_group, this));
         connect(m_multicast_receiver.data(), &Receiver::signal_datagram_available, this, &Dialog::slot_process_peer_event);
+
+        // Request an update from any Collectors not running in detect-offline mode
+        auto dashboard_online = QString("{ \"dashboard_id\" : \"%1\", \"action\" : \"initialize\" }")
+            .arg(reinterpret_cast<qint64>(this));
+        m_multicast_sender->send_datagram(dashboard_online.toUtf8());
     }
 
     m_multicast_group_member = !m_multicast_group_member;
@@ -428,9 +435,10 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
     if(!doc.isNull())
     {
         QJsonObject object = doc.object();
-        if(object.contains("type"))
+
+        // Only process events from Collectors
+        if(object.contains("domain_id") && object.contains("type"))
         {
-            assert(object.contains("domain_id"));
             assert(object.contains("domain_name"));
 
             auto msg_type = SharedTypes::MsgText2Type[object["type"].toString()];

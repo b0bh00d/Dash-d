@@ -8,6 +8,7 @@
 #include <QSharedPointer>
 
 #include "Sender.h"
+#include "Receiver.h"
 
 //---------------------------------------------------------------------------
 // Dash'd Collector
@@ -39,12 +40,13 @@ private slots:
     void        slot_directory_event(const QString&);
     void        slot_file_event(const QString&);
     void        slot_housekeeping();
+    void        slot_process_peer_event(const QByteArray&);
 
 private:    // typedefs and enums
     using WatcherPtr = QSharedPointer<QFileSystemWatcher>;
     using FilePtr = QSharedPointer<QFile>;
     using TimerPtr = QSharedPointer<QTimer>;
-    using SensorDataList = QList<QVariant>; // stores sensor name and last modification timestamp
+    using SensorDataList = QList<QVariant>; // stores sensor name, last modification timestamp, and report (if detect-online is enabled)
     using QueueMap = QMap<QString, SensorDataList>;
     using UpdateDataList = QList<qint64>;
     using UpdateMap = QMap<QString, UpdateDataList>;
@@ -69,7 +71,8 @@ private:    // data members
     QString     m_log_path;
 
     WatcherPtr  m_watcher;
-    SenderPtr   m_sender;
+    SenderPtr   m_multicast_sender;
+    ReceiverPtr m_multicast_receiver;
 
     QDateTime   m_start_time;
 

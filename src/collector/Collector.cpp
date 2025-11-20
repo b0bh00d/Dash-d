@@ -222,19 +222,8 @@ Collector::Collector(int argc, char *argv[])
         return;
     }
 
-    // Create a Sender instance
-    if(!ip4group.isEmpty())
-    {
-        // for IPv4
-        m_sender = SenderPtr(new Sender(port, ip4group, QString()));
-        qInfo() << tr("Sending sensor data to IPv4 multicast ") << qUtf8Printable(ip4group) << ":" << port << ".";
-    }
-    else
-    {
-        // for IPv6
-        m_sender = SenderPtr(new Sender(port, QString(), ip6group));
-        qInfo() << tr("Sending sensor data to IPv6 multicast ") << ip6group << ":" << port << ".";
-    }
+    // Create sender connection to the group
+    m_multicast_sender = SenderPtr(new Sender(port, ip4group, ip6group));
 
     if(m_detect_offline)
     {
@@ -245,7 +234,18 @@ Collector::Collector(int argc, char *argv[])
         qInfo() << tr("Detecting offline Sensors.");
     }
     else
+    {
         qInfo() << tr("Not detecting offline Sensors.");
+
+        // Only create a listener connection if we are not detecting offline Sensors
+        m_multicast_receiver.reset(new Receiver(port, ip4group, ip6group, this));
+        connect(m_multicast_receiver.data(), &Receiver::signal_datagram_available, this, &Collector::slot_process_peer_event);
+    }
+
+    if(!ip4group.isEmpty())
+        qInfo() << tr("Sending sensor data to IPv4 multicast ") << qUtf8Printable(ip4group) << ":" << port << ".";
+    else
+        qInfo() << tr("Sending sensor data to IPv6 multicast ") << ip6group << ":" << port << ".";
 }
 
 Collector::~Collector()
@@ -262,14 +262,10 @@ Collector::~Collector()
         m_housekeeping.clear();
     }
 
-    if(m_log)
-        m_log.clear();
-
-    if(m_watcher)
-        m_watcher.clear();
-
-    if(m_sender)
-        m_sender.clear();
+    m_log.clear();
+    m_watcher.clear();
+    m_multicast_sender.clear();
+    m_multicast_receiver.clear();
 }
 
 // This is a callback used to intercept log message calls
@@ -342,8 +338,11 @@ void Collector::initialize_watcher()
     foreach(QString filename, sensor_files)
     {
         auto full_file_path = directory.absoluteFilePath(filename);
+        const QFileInfo info(full_file_path);
+
         messages.append(tr("Adding existing Sensor event file \"%1\".").arg(full_file_path));
-        m_watcher->addPath(full_file_path);
+        if(process_sensor_update(full_file_path, info.lastModified()))
+            m_watcher->addPath(full_file_path);
     }
 
     int count = 0;
@@ -374,7 +373,7 @@ void Collector::process_sensor_offline(const QString& file, const QString& msg)
              QUrl::toPercentEncoding(sensor_name));
 
     // Send the domain error to the multicast group
-    m_sender->send_datagram(sensor_offline.toUtf8());
+    m_multicast_sender->send_datagram(sensor_offline.toUtf8());
 
     m_sensor_updates.remove(file);
 }
@@ -416,12 +415,15 @@ bool Collector::process_sensor_update(const QString& file, QDateTime last_modifi
                             QUrl::toPercentEncoding(sensor_message));
 
                     // Send the sensor data to the multicast group
-                    m_sender->send_datagram(sensor_data.toUtf8());
+                    if(!m_multicast_sender.isNull())
+                        m_multicast_sender->send_datagram(sensor_data.toUtf8());
 
                     if(m_queue_cache.contains(file))
                     {
                         auto delta = m_queue_cache[file][1].toDateTime().msecsTo(last_modified);
                         m_queue_cache[file][1] = last_modified;
+                        if(!m_detect_offline)
+                            m_queue_cache[file][2] = sensor_data;
 
                         m_sensor_updates[file][0] += 1;
                         m_sensor_updates[file][1] += delta;
@@ -432,6 +434,8 @@ bool Collector::process_sensor_update(const QString& file, QDateTime last_modifi
                         m_queue_cache[file] = SensorDataList();
                         m_queue_cache[file].append(sensor_name);
                         m_queue_cache[file].append(last_modified);
+                        if(!m_detect_offline)
+                            m_queue_cache[file].append(sensor_data);
 
                         m_sensor_updates[file] = UpdateDataList();
                         m_sensor_updates[file].append(0);
@@ -552,6 +556,31 @@ void Collector::slot_housekeeping()
                     // Consider this one offline.
                     qInfo() << tr("Processing Sensor offline: \"") << key << "\" (avg: " << average_cadence << ", delta: " << delta << ")";
                     process_sensor_offline(key, tr("Sensor update overdue; flagging offline."));
+                }
+            }
+        }
+    }
+}
+
+void Collector::slot_process_peer_event(const QByteArray& datagram)
+{
+    auto doc{QJsonDocument::fromJson(datagram)};
+    if(!doc.isNull())
+    {
+        QJsonObject object = doc.object();
+
+        // Only process events from Dashboards
+        if(object.contains("dashboard_id") && object.contains("action"))
+        {
+            auto action = object["action"].toString();
+            if(!action.compare("initialize"))
+            {
+                // (re)Send all of our cached event reports
+                auto keys = m_queue_cache.keys();
+                foreach(QString key, keys)
+                {
+                    auto report = m_queue_cache[key][2];
+                    m_multicast_sender->send_datagram(report.toByteArray());
                 }
             }
         }

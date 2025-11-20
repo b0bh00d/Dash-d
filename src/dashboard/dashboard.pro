@@ -27,6 +27,7 @@ INCLUDEPATH += ../common ../common/network
 SOURCES += \
     ../common/SharedTypes.cpp \
     ../common/network/Receiver.cpp \
+    ../common/network/Sender.cpp \
     Dashboard.cpp \
     Domain.cpp \
     Sensor.cpp \
@@ -36,6 +37,7 @@ SOURCES += \
 HEADERS += \
     ../common/SharedTypes.h \
     ../common/network/Receiver.h \
+    ../common/network/Sender.h \
     Dashboard.h \
     Domain.h \
     Packet.h \

@@ -13,6 +13,7 @@
 
 #include "Dashboard.h"
 #include "Domain.h"
+#include "Sender.h"
 #include "Receiver.h"
 
 // This is the initial width/height of the dashboard window.
@@ -86,6 +87,7 @@ private:    // data members
     QMenu*      m_trayIconMenu{nullptr};
     QAction*    m_quit_action{nullptr};
 
+    SenderPtr   m_multicast_sender;
     ReceiverPtr m_multicast_receiver;
 
     bool        m_multicast_group_member{false};
