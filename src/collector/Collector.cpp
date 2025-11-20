@@ -540,16 +540,19 @@ void Collector::slot_housekeeping()
     foreach(QString key, keys)
     {
         // Calculate the current average update cadence
-        auto average_cadence = m_sensor_updates[key][1] / m_sensor_updates[key][0];
-        if(average_cadence)
+        if(m_sensor_updates[key][0])
         {
-            // How long since the last update?
-            auto delta = m_queue_cache[key][1].toDateTime().msecsTo(now);
-            if(delta >= (average_cadence * m_offline_detection_multiplier))
+            auto average_cadence = m_sensor_updates[key][1] / m_sensor_updates[key][0];
+            if(average_cadence)
             {
-                // Consider this one offline.
-                qInfo() << tr("Processing Sensor offline: \"") << key << "\" (avg: " << average_cadence << ", delta: " << delta << ")";
-                process_sensor_offline(key, tr("Sensor update overdue; flagging offline."));
+                // How long since the last update?
+                auto delta = m_queue_cache[key][1].toDateTime().msecsTo(now);
+                if(delta >= (average_cadence * m_offline_detection_multiplier))
+                {
+                    // Consider this one offline.
+                    qInfo() << tr("Processing Sensor offline: \"") << key << "\" (avg: " << average_cadence << ", delta: " << delta << ")";
+                    process_sensor_offline(key, tr("Sensor update overdue; flagging offline."));
+                }
             }
         }
     }
