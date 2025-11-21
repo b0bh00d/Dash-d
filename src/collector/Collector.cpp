@@ -406,11 +406,13 @@ bool Collector::process_sensor_update(const QString& file, QDateTime last_modifi
                 {
                     auto sensor_data = QString("{ \"domain_id\" : \"%1\", \"domain_name\" : \"%2\", "
                                                " \"type\" : \"%3\", "
-                                               " \"sensor_name\" : \"%4\", \"sensor_state\" : \"%5\", "
-                                               " \"sensor_message\" : \"%6\" }")
+                                               " \"updated\" : \"%4\", "
+                                               " \"sensor_name\" : \"%5\", \"sensor_state\" : \"%6\", "
+                                               " \"sensor_message\" : \"%7\" }")
                         .arg(m_id)
                         .arg(QUrl::toPercentEncoding(m_name),
                             SharedTypes::MsgType2Text[SharedTypes::MessageType::Sensor],
+                            QString::number(last_modified.toMSecsSinceEpoch()),
                             QUrl::toPercentEncoding(sensor_name), sensor_state,
                             QUrl::toPercentEncoding(sensor_message));
 

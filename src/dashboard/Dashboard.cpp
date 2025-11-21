@@ -48,7 +48,6 @@ Dashboard::Dashboard(bool dark_mode, bool always_on_top, Orientation orientation
     connect(m_housekeeping.data(), &QTimer::timeout, this, &Dashboard::slot_housekeeping);
 }
 
-
 void Dashboard::slot_housekeeping()
 {
     if(!m_animation_in_progress)
@@ -193,13 +192,13 @@ void Dashboard::mouseMoveEvent(QMouseEvent* event)
     QFrame::mouseMoveEvent(event);
 }
 
-QString Dashboard::gen_tooltip(const QString& base, const QString& msg)
+QString Dashboard::gen_tooltip(Sensor* sensor, const QString& base, const QString& msg)
 {
     auto tt1 = tr("<code>%1</code>").arg(base);
     QString tt2;
     if(!msg.isEmpty())
         tt2 = tr("Event: %1").arg(QUrl::fromPercentEncoding(msg.toUtf8()));
-    auto tt3 = tr("Updated: %1").arg(QDateTime::currentDateTime().toString());
+    auto tt3 = tr("Updated: %1").arg(sensor->last_update().toString());
 
     auto tooltip = QString("%1<hr>%2%3")
         .arg(tt1, tt2.isEmpty() ? "" : QString("%1<br>").arg(tt2), tt3);
@@ -254,7 +253,7 @@ void Dashboard::slot_update_sensor(SensorPtr sensor, const QString& message, boo
     else
         m_target_sensor->setPixmap(m_next_image);
 
-    auto tooltip = gen_tooltip(m_target_sensor->property("base_tooltip").toString(), message);
+    auto tooltip = gen_tooltip(sensor.data(), m_target_sensor->property("base_tooltip").toString(), message);
     m_target_sensor->setToolTip(tooltip);
 }
 
@@ -366,7 +365,7 @@ void Dashboard::add_sensor(Domain* domain, Sensor* sensor, int w, int h)
     label->setPixmap(pixmap);
 
     label->setProperty("base_tooltip", tooltip);
-    tooltip = gen_tooltip(label->property("base_tooltip").toString(), sensor->message());
+    tooltip = gen_tooltip(sensor, label->property("base_tooltip").toString(), sensor->message());
     label->setToolTip(tooltip);
 
     QBoxLayout* my_layout = reinterpret_cast<QBoxLayout*>(layout());
@@ -412,11 +411,6 @@ void Dashboard::add_sensor(Domain* domain, Sensor* sensor, int w, int h)
 
     repaint();
 }
-
-// void Dashboard::del_sensor(SensorPtr sensor)
-// {
-//     del_sensor(sensor->name());
-// }
 
 void Dashboard::animate_del_sensor(SensorPtr sensor)
 {

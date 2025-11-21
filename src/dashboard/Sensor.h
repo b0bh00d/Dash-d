@@ -33,9 +33,10 @@ public:
     SharedTypes::SensorState     state() const { return m_state; }
     const QString&  message() const { return m_message; }
     QDateTime       last_update() const { return m_last_update; }
-    qint64          average_update() const { return m_update_count ? m_update_deltas / m_update_count : m_update_count; }
+    // qint64          average_update() const { return m_update_count ? m_update_deltas / m_update_count : m_update_count; }
 
     void            set_state(SharedTypes::SensorState state, const QString& message = QString());
+    void            set_update(const QDateTime& stamp) { m_last_update = stamp; }
 
 signals:
     void            signal_state_changed();
@@ -49,9 +50,6 @@ private:    // data members
     QString         m_message;
 
     QDateTime       m_last_update;
-    qint64          m_update_count{0};  // number of updates received
-    qint64          m_update_deltas{0}; // accumulated milliseconds between updates
-    // (m_update_deltas / m_update_count) == average update delay (ms)
 };
 
 using SensorPtr = QSharedPointer<Sensor>;

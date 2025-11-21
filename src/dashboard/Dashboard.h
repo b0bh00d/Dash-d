@@ -16,7 +16,7 @@
 
 #include <QPropertyAnimation>
 
-#include "../SharedTypes.h"
+// #include "../SharedTypes.h"
 
 #include "Domain.h"
 #include "Sensor.h"
@@ -95,7 +95,7 @@ private:    // typedefs and enums
 private:    // methods
     void        add_sensor(Domain* domain, Sensor* sensor, int w, int h);
     void        del_sensor();
-    QString     gen_tooltip(const QString& base, const QString& msg = QString());
+    QString     gen_tooltip(Sensor* sensor, const QString& base, const QString& msg = QString());
 
 private:    // data members
     int         m_margin{15};

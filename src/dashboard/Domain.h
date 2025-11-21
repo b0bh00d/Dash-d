@@ -34,7 +34,7 @@ public:
     bool        has_sensor(const QString& name) const { return m_sensors.contains(name); }
     void        add_sensor(SensorPtr sensor);
     void        del_sensor(const QString& name);
-    void        update_sensor(QString name, SharedTypes::SensorState state, const QString& message = QString());
+    void        update_sensor(QString name, SharedTypes::SensorState state, const QDateTime& update, const QString& message = QString());
 
     int         sensor_count() const { return m_sensors.count(); }
 
@@ -46,7 +46,7 @@ signals:
 private slots:
     void        slot_housekeeping();
 
-private: // typedefs
+private:    // typedefs
     using SensorMap = QMap<QString, SensorPtr>;
     using TimerPtr = QSharedPointer<QTimer>;
 

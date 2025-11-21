@@ -469,14 +469,19 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
                         auto sensor_state = object["sensor_state"].toString().toLower();
                         auto sensor_message = object["sensor_message"].toString();
 
+                        auto updated = QDateTime::currentDateTime();
+                        if(object.contains("updated"))
+                            updated = QDateTime::fromMSecsSinceEpoch(object["updated"].toString().toLongLong());
+
                         if(!domain->has_sensor(sensor_name))
                         {
                             auto sensor = SensorPtr(new Sensor(sensor_name));
                             sensor->set_state(SharedTypes::MsgText2State[sensor_state], sensor_message);
+                            sensor->set_update(updated);
                             domain->add_sensor(sensor);
                         }
                         else
-                            domain->update_sensor(sensor_name, SharedTypes::MsgText2State[sensor_state], sensor_message);
+                            domain->update_sensor(sensor_name, SharedTypes::MsgText2State[sensor_state], updated, sensor_message);
 
                         ui->list_Log->addItem(
                             QString("%1: %2::%3::%4")
@@ -495,7 +500,7 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
                         if(object.contains("sensor_message"))
                             sensor_message = object["sensor_message"].toString();
 
-                        domain->update_sensor(sensor_name, SharedTypes::SensorState::Offline, sensor_message);
+                        domain->update_sensor(sensor_name, SharedTypes::SensorState::Offline, QDateTime::currentDateTime(), sensor_message);
 
                         ui->list_Log->addItem(
                             QString("%1: %2::%3::Offline")

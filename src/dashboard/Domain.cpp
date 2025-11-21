@@ -39,7 +39,7 @@ void Domain::del_sensor(const QString& name)
     emit signal_sensor_removed(sensor);
 }
 
-void Domain::update_sensor(QString name, SharedTypes::SensorState state, const QString& message)
+void Domain::update_sensor(QString name, SharedTypes::SensorState state, const QDateTime& update, const QString& message)
 {
     // Do we have this sensor already?
     assert(m_sensors.contains(name));
@@ -47,6 +47,7 @@ void Domain::update_sensor(QString name, SharedTypes::SensorState state, const Q
 
     bool notify = state > sensor->state();
     sensor->set_state(state, message);
+    sensor->set_update(update);
     emit signal_sensor_updated(sensor, message, notify);
 }
 
