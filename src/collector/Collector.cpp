@@ -224,6 +224,8 @@ Collector::Collector(int argc, char *argv[])
 
     // Create sender connection to the group
     m_multicast_sender = SenderPtr(new Sender(port, ip4group, ip6group));
+    m_multicast_receiver.reset(new Receiver(port, ip4group, ip6group, this));
+    connect(m_multicast_receiver.data(), &Receiver::signal_datagram_available, this, &Collector::slot_process_peer_event);
 
     if(m_detect_offline)
     {
@@ -234,13 +236,7 @@ Collector::Collector(int argc, char *argv[])
         qInfo() << tr("Detecting offline Sensors.");
     }
     else
-    {
         qInfo() << tr("Not detecting offline Sensors.");
-
-        // Only create a listener connection if we are not detecting offline Sensors
-        m_multicast_receiver.reset(new Receiver(port, ip4group, ip6group, this));
-        connect(m_multicast_receiver.data(), &Receiver::signal_datagram_available, this, &Collector::slot_process_peer_event);
-    }
 
     if(!ip4group.isEmpty())
         qInfo() << tr("Sending sensor data to IPv4 multicast ") << qUtf8Printable(ip4group) << ":" << port << ".";
@@ -424,8 +420,9 @@ bool Collector::process_sensor_update(const QString& file, QDateTime last_modifi
                     {
                         auto delta = m_queue_cache[file][1].toDateTime().msecsTo(last_modified);
                         m_queue_cache[file][1] = last_modified;
-                        if(!m_detect_offline)
-                            m_queue_cache[file][2] = sensor_data;
+                        // Cache the most recent event report for each Sensor
+                        // so we can initialize newly active Dashboards
+                        m_queue_cache[file][2] = sensor_data;
 
                         m_sensor_updates[file][0] += 1;
                         m_sensor_updates[file][1] += delta;
@@ -436,8 +433,7 @@ bool Collector::process_sensor_update(const QString& file, QDateTime last_modifi
                         m_queue_cache[file] = SensorDataList();
                         m_queue_cache[file].append(sensor_name);
                         m_queue_cache[file].append(last_modified);
-                        if(!m_detect_offline)
-                            m_queue_cache[file].append(sensor_data);
+                        m_queue_cache[file].append(sensor_data);
 
                         m_sensor_updates[file] = UpdateDataList();
                         m_sensor_updates[file].append(0);
