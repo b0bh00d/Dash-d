@@ -39,9 +39,9 @@ public:
     int         sensor_count() const { return m_sensors.count(); }
 
 signals:
-    void        signal_sensor_added(SensorPtr sensor);
-    void        signal_sensor_removed(const QString& name);
-    void        signal_sensor_updated(const QString& name, SharedTypes::SensorState state, const QString& message, bool notify);
+    void        signal_sensor_added(SensorPtr sensor, Domain* domain);
+    void        signal_sensor_removed(SensorPtr sensor);
+    void        signal_sensor_updated(SensorPtr sensor, const QString& message, bool notify);
 
 private slots:
     void        slot_housekeeping();

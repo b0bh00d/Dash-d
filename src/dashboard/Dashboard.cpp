@@ -42,6 +42,40 @@ Dashboard::Dashboard(bool dark_mode, bool always_on_top, Orientation orientation
     layout->setMargin(m_margin);
     layout->addSpacerItem(spacer);
     setLayout(layout);
+
+    m_housekeeping = TimerPtr(new QTimer());
+    m_housekeeping->setInterval(100);
+    connect(m_housekeeping.data(), &QTimer::timeout, this, &Dashboard::slot_housekeeping);
+}
+
+
+void Dashboard::slot_housekeeping()
+{
+    if(!m_animation_in_progress)
+    {
+        auto action_item = m_action_queue.dequeue();
+
+        auto domain = std::get<0>(action_item);
+        auto sensor = std::get<1>(action_item);
+        auto action = std::get<2>(action_item);
+
+        switch(action)
+        {
+            case SensorAction::Add:
+                QTimer::singleShot(0, this, [this, sensor, domain]()->void{slot_add_sensor(sensor, domain);});
+                break;
+            case SensorAction::Delete:
+                QTimer::singleShot(0, this, [this, sensor]()->void{slot_del_sensor(sensor);});
+                break;
+            case SensorAction::Update:
+            case SensorAction::None:
+            default:
+                break;
+        }
+
+        if(m_action_queue.isEmpty())
+            m_housekeeping->stop();
+    }
 }
 
 // https://forum.qt.io/topic/162168/how-to-round-the-corners-of-a-frameless-qwidget-when-also-applying-acrylic-effects/8
@@ -172,9 +206,62 @@ QString Dashboard::gen_tooltip(const QString& base, const QString& msg)
     return(tooltip);
 }
 
-void Dashboard::add_sensor(SensorPtr sensor)
+void Dashboard::slot_add_sensor(SensorPtr sensor, Domain* domain)
 {
-    auto domain = qobject_cast<Domain*>(sender());
+    if(!domain)
+        domain = qobject_cast<Domain*>(sender());
+
+    if(!m_animation_in_progress)
+        animate_sensor_add(sensor, domain);
+    else
+    {
+        ActionData data{domain, sensor, SensorAction::Add};
+        m_action_queue.enqueue(data);
+
+        if(!m_housekeeping->isActive())
+            m_housekeeping->start();
+    }
+}
+
+void Dashboard::slot_del_sensor(SensorPtr sensor)//const QString& name)
+{
+    if(!m_animation_in_progress)
+        animate_del_sensor(sensor);
+    else
+    {
+        ActionData data{nullptr, sensor, SensorAction::Delete};
+        m_action_queue.enqueue(data);
+
+        if(!m_housekeeping->isActive())
+            m_housekeeping->start();
+    }
+}
+
+void Dashboard::slot_update_sensor(SensorPtr sensor, const QString& message, bool notify)
+{
+    m_target_sensor = m_labels[sensor->name()];
+
+    QString image = Sensor::StateImages[sensor->state()];
+    m_next_image = (m_orientation == Orientation::Vertical) ? QPixmap(image).scaledToWidth(m_base_dim.width()) : QPixmap(image).scaledToHeight(m_base_dim.height());
+
+    if(notify)
+    {
+        m_target_sensor->setPixmap(m_empty_image);
+        m_showing_empty = true;
+        m_flash_count = 10;
+        QTimer::singleShot(100, this, &Dashboard::slot_flash_notify);
+    }
+    else
+        m_target_sensor->setPixmap(m_next_image);
+
+    auto tooltip = gen_tooltip(m_target_sensor->property("base_tooltip").toString(), message);
+    m_target_sensor->setToolTip(tooltip);
+}
+
+void Dashboard::animate_sensor_add(SensorPtr sensor, Domain* domain)
+{
+    if(!domain)
+        domain = qobject_cast<Domain*>(sender());
 
     if(m_base_pos.isNull())
     {
@@ -252,12 +339,13 @@ void Dashboard::add_sensor(SensorPtr sensor)
 
         if(animation)
         {
-            ActionStack items{domain, sensor.data(), w, h};
-            m_actions[animation] = items;
+            AnimData items{domain, sensor.data(), w, h};
+            m_anim_data[animation] = items;
 
             animation->setDuration(500);
             animation->setEasingCurve(QEasingCurve::OutSine);
             connect(animation, &QAbstractAnimation::finished, this, &Dashboard::slot_add_sensor_animation_complete);
+            m_animation_in_progress = true;
             animation->start();
         }
         else
@@ -325,15 +413,15 @@ void Dashboard::add_sensor(Domain* domain, Sensor* sensor, int w, int h)
     repaint();
 }
 
-void Dashboard::del_sensor(SensorPtr sensor)
-{
-    del_sensor(sensor->name());
-}
+// void Dashboard::del_sensor(SensorPtr sensor)
+// {
+//     del_sensor(sensor->name());
+// }
 
-void Dashboard::del_sensor(const QString& name)
+void Dashboard::animate_del_sensor(SensorPtr sensor)
 {
-    auto label = m_labels[name];
-    m_labels.remove(name);
+    auto label = m_labels[sensor->name()];
+    m_labels.remove(sensor->name());
 
     auto my_layout = reinterpret_cast<QVBoxLayout*>(layout());
     my_layout->takeAt(my_layout->indexOf(label));
@@ -347,37 +435,6 @@ void Dashboard::del_sensor(const QString& name)
     }
     else
         QTimer::singleShot(0, this, &Dashboard::slot_animate_del);
-}
-
-void Dashboard::slot_add_sensor(SensorPtr sensor)
-{
-    add_sensor(sensor);
-}
-
-void Dashboard::slot_del_sensor(const QString& name)
-{
-    del_sensor(name);
-}
-
-void Dashboard::slot_update_sensor(const QString& name, SharedTypes::SensorState state, const QString& message, bool notify)
-{
-    m_target_sensor = m_labels[name];
-
-    QString image = Sensor::StateImages[state];
-    m_next_image = (m_orientation == Orientation::Vertical) ? QPixmap(image).scaledToWidth(m_base_dim.width()) : QPixmap(image).scaledToHeight(m_base_dim.height());
-
-    if(notify)
-    {
-        m_target_sensor->setPixmap(m_empty_image);
-        m_showing_empty = true;
-        m_flash_count = 10;
-        QTimer::singleShot(100, this, &Dashboard::slot_flash_notify);
-    }
-    else
-        m_target_sensor->setPixmap(m_next_image);
-
-    auto tooltip = gen_tooltip(m_target_sensor->property("base_tooltip").toString(), message);
-    m_target_sensor->setToolTip(tooltip);
 }
 
 void Dashboard::slot_flash_notify()
@@ -398,11 +455,13 @@ void Dashboard::slot_flash_notify()
 
 void Dashboard::slot_add_sensor_animation_complete()
 {
+    m_animation_in_progress = false;
+
     auto animation = qobject_cast<QPropertyAnimation*>(sender());
     animation->deleteLater();
 
-    auto tuple = m_actions[animation];
-    m_actions.erase(animation);
+    auto tuple = m_anim_data[animation];
+    m_anim_data.erase(animation);
 
     auto domain = std::get<0>(tuple);
     auto sensor = std::get<1>(tuple);
@@ -477,6 +536,7 @@ void Dashboard::slot_animate_del()
         animation->setDuration(500);
         animation->setEasingCurve(QEasingCurve::OutSine);
         connect(animation, &QAbstractAnimation::finished, this, &Dashboard::slot_del_sensor_animation_complete);
+        m_animation_in_progress = true;
         animation->start();
     }
     else
@@ -485,6 +545,8 @@ void Dashboard::slot_animate_del()
 
 void Dashboard::slot_del_sensor_animation_complete()
 {
+    m_animation_in_progress = false;
+
     auto animation = qobject_cast<QPropertyAnimation*>(sender());
     animation->deleteLater();
 }

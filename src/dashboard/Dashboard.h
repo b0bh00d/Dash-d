@@ -3,6 +3,7 @@
 #include <tuple>
 
 #include <QSharedPointer>
+#include <QQueue>
 
 #include <QFrame>
 #include <QLabel>
@@ -51,17 +52,13 @@ public:
         Direction direction = Direction::Down,
         QFrame *parent = nullptr);
 
-    void        add_sensor(SensorPtr sensor);
-    void        del_sensor(SensorPtr sensor);
-    void        del_sensor(const QString& name);
-
 signals:
     void        signal_dash_moved(QPoint pos);
 
 public slots:
-    void        slot_add_sensor(SensorPtr sensor);
-    void        slot_del_sensor(const QString& name);
-    void        slot_update_sensor(const QString& name, SharedTypes::SensorState state, const QString& message, bool notify);
+    void        slot_add_sensor(SensorPtr sensor, Domain* domain = nullptr);
+    void        slot_del_sensor(SensorPtr sensor);
+    void        slot_update_sensor(SensorPtr sensor, const QString& message, bool notify);
 
 protected:  // methods
     void        paintEvent(QPaintEvent*) Q_DECL_OVERRIDE;
@@ -75,14 +72,25 @@ private slots:
     void        slot_flash_notify();
 
     void        slot_add_sensor_animation_complete();
+    void        animate_sensor_add(SensorPtr sensor, Domain* domain = nullptr);
     void        slot_del_sensor_animation_complete();
+    void        animate_del_sensor(SensorPtr sensor);
     void        slot_animate_del();
 
+    void        slot_housekeeping();
+
 private:    // typedefs and enums
+    enum class SensorAction { None, Add, Delete, Update };
+
     using LabelMap = QMap<QString, QLabel*>;
 
-    using ActionStack = std::tuple<Domain*, Sensor*, int, int>;
-    using ActionMap = std::map<QPropertyAnimation*, ActionStack>;
+    using AnimData = std::tuple<Domain*, Sensor*, int, int>;
+    using AnimMap = std::map<QPropertyAnimation*, AnimData>;
+
+    using ActionData = std::tuple<Domain*, SensorPtr, SensorAction>;
+    using ActionQueue = QQueue<ActionData>;
+
+    using TimerPtr = QSharedPointer<QTimer>;
 
 private:    // methods
     void        add_sensor(Domain* domain, Sensor* sensor, int w, int h);
@@ -124,9 +132,13 @@ private:    // data members
     int         m_top_offset{0};
     QPoint      m_start_pos;
 
-    ActionMap   m_actions;
+    AnimMap     m_anim_data;
+    ActionQueue m_action_queue;
 
     bool        m_mouse_inside{false};
+    bool        m_animation_in_progress{false};
+
+    TimerPtr    m_housekeeping;
 };
 
 using DashboardPtr = QSharedPointer<Dashboard>;

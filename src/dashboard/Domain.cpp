@@ -9,13 +9,13 @@ Domain::Domain(std::uint64_t id, const QString& name, QObject *parent)
 Domain::~Domain()
 {
     foreach(const auto &sensor, m_sensors)
-        emit signal_sensor_removed(sensor->name());
+        emit signal_sensor_removed(sensor);
 }
 
 void Domain::add_sensor(SensorPtr sensor)
 {
     m_sensors[sensor->name()] = sensor;
-    emit signal_sensor_added(sensor);
+    emit signal_sensor_added(sensor, this);
 
     if(m_housekeeping.isNull())
     {
@@ -28,6 +28,7 @@ void Domain::add_sensor(SensorPtr sensor)
 
 void Domain::del_sensor(const QString& name)
 {
+    auto sensor = m_sensors[name];
     m_sensors.remove(name);
     if(m_sensors.isEmpty())
     {
@@ -35,17 +36,18 @@ void Domain::del_sensor(const QString& name)
         m_housekeeping.clear();
     }
 
-    emit signal_sensor_removed(name);
+    emit signal_sensor_removed(sensor);
 }
 
 void Domain::update_sensor(QString name, SharedTypes::SensorState state, const QString& message)
 {
     // Do we have this sensor already?
     assert(m_sensors.contains(name));
+    auto sensor = m_sensors[name];
 
-    bool notify = state > m_sensors[name]->state();
-    m_sensors[name]->set_state(state, message);
-    emit signal_sensor_updated(name, state, message, notify);
+    bool notify = state > sensor->state();
+    sensor->set_state(state, message);
+    emit signal_sensor_updated(sensor, message, notify);
 }
 
 void Domain::slot_housekeeping()
