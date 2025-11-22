@@ -66,7 +66,7 @@ void Dashboard::slot_housekeeping()
             case SensorAction::Delete:
                 QTimer::singleShot(0, this, [this, sensor]()->void{slot_del_sensor(sensor);});
                 break;
-            case SensorAction::Update:
+            case SensorAction::Update:  // Update does not animate window sizing, so does not have to be queued
             case SensorAction::None:
             default:
                 break;

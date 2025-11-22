@@ -38,6 +38,7 @@ public:
 
 private slots:
     void        slot_directory_event(const QString&);
+    void        slot_broadcast_cached_events();
     void        slot_file_event(const QString&);
     void        slot_housekeeping();
     void        slot_process_peer_event(const QByteArray&);

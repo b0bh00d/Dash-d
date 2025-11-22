@@ -33,6 +33,13 @@ from queue import Queue
 from typing import Iterator, Tuple
 from collections.abc import Mapping
 
+__author__     = "Bob Hood"
+__copyright__  = "Copyright (C) 2025 Bob Hood"
+__version__    = "1.0"
+__maintainer__ = "Bob Hood"
+__email__      = "bob.hood@posteo.com"
+__status__     = "Production"
+
 g_watchdog_queue: Queue | None = None
 try:
     from watchdog.observers import Observer                             # type: ignore

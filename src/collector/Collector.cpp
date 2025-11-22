@@ -242,6 +242,8 @@ Collector::Collector(int argc, char *argv[])
         qInfo() << tr("Sending sensor data to IPv4 multicast ") << qUtf8Printable(ip4group) << ":" << port << ".";
     else
         qInfo() << tr("Sending sensor data to IPv6 multicast ") << ip6group << ":" << port << ".";
+
+    QTimer::singleShot(0, this, &Collector::slot_broadcast_cached_events);
 }
 
 Collector::~Collector()
@@ -251,6 +253,10 @@ Collector::~Collector()
     // clean up themselves, but I like the bookkeeping)
 
     qInfo() << tr("Shutting down.");
+
+    auto keys = m_queue_cache.keys();
+    foreach(QString key, keys)
+        process_sensor_offline(key, tr("Collector shutting down; flagging offline."));
 
     if(m_housekeeping)
     {
@@ -534,6 +540,34 @@ void Collector::slot_file_event(const QString& file)
     process_sensor_update(file, info.lastModified());
 }
 
+void Collector::slot_process_peer_event(const QByteArray& datagram)
+{
+    auto doc{QJsonDocument::fromJson(datagram)};
+    if(!doc.isNull())
+    {
+        QJsonObject object = doc.object();
+
+        // Only process events from Dashboards
+        if(object.contains("dashboard_id") && object.contains("action"))
+        {
+            auto action = object["action"].toString();
+            if(!action.compare("initialize"))
+                QTimer::singleShot(0, this, &Collector::slot_broadcast_cached_events);
+        }
+    }
+}
+
+void Collector::slot_broadcast_cached_events()
+{
+    // (re)Send all of our cached event reports
+    auto keys = m_queue_cache.keys();
+    foreach(QString key, keys)
+    {
+        auto report = m_queue_cache[key][2];
+        m_multicast_sender->send_datagram(report.toByteArray());
+    }
+}
+
 void Collector::slot_housekeeping()
 {
     auto now = QDateTime::currentDateTime();
@@ -554,31 +588,6 @@ void Collector::slot_housekeeping()
                     // Consider this one offline.
                     qInfo() << tr("Processing Sensor offline: \"") << key << "\" (avg: " << average_cadence << ", delta: " << delta << ")";
                     process_sensor_offline(key, tr("Sensor update overdue; flagging offline."));
-                }
-            }
-        }
-    }
-}
-
-void Collector::slot_process_peer_event(const QByteArray& datagram)
-{
-    auto doc{QJsonDocument::fromJson(datagram)};
-    if(!doc.isNull())
-    {
-        QJsonObject object = doc.object();
-
-        // Only process events from Dashboards
-        if(object.contains("dashboard_id") && object.contains("action"))
-        {
-            auto action = object["action"].toString();
-            if(!action.compare("initialize"))
-            {
-                // (re)Send all of our cached event reports
-                auto keys = m_queue_cache.keys();
-                foreach(QString key, keys)
-                {
-                    auto report = m_queue_cache[key][2];
-                    m_multicast_sender->send_datagram(report.toByteArray());
                 }
             }
         }
