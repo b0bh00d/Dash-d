@@ -6,6 +6,7 @@
 # from systemd (instead of this bash script).
 
 # The virtual environment folder that has watchdog installed
+# (change the path here to match your system)
 cd /home/bob/check-space
 
 # Activeate the virtual environment

@@ -8,7 +8,10 @@ After=network.target
 
 [Service]
 Type=simple
+# Change the path here to where you deposit the script
+# (be sure to set the u+x bit!).
 ExecStart=/home/bob/check-space.sh
+# Change the user/group target to one on your system.
 User=bob
 Group=bob
 
@@ -17,4 +20,3 @@ TimeoutSec=10
 
 [Install]
 WantedBy=default.target
-
