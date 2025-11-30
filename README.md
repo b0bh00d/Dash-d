@@ -24,6 +24,9 @@ Multicasting in Dash'd is limited to the current subnet.  This means that domain
 
 It is important to emphasize that the network parameters used by Collectors--IP adddress and port--must _exactly_ match those used by the Dashboards.  In this fashion, the multicast "ring" is established and data sent is successfully received.  Out of the box, both Collectors and Dashboards are coded to use the same default settings, so they will use the same "ring" when started.  You can override these settings of course, but be sure you apply the same settings to all processes.
 
+#### Security
+Lastly, there is no security implemented in Dash'd.  Any Collector or Dashboard can connect to the same address/port.  On a local LAN, this will likely not be an issue.  However, if the "ring" were exposed to the greater Internet, anybody armed with the same address/port pair can also connect to your multicast group.
+
 ### Sensor
 A Sensor is actually not a direct component of the Dash'd project.  Rather, they are independent processes running on the domain that are actively monitoring one or more assets and/or resources.  Sensors are written by the user, and can be constructed in any language or fashion chosen by the user, as long as they can produce the expected output.
 
