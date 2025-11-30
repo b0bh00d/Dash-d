@@ -33,12 +33,14 @@ class Dashboard : public QFrame
 {
     Q_OBJECT
 public:    // typedefs and enums
+    // Should the dashboard be North/South or East/West?
     enum class Orientation {
         Symmetrical,
         Vertical,
         Horizontal
     };
 
+    // Which direction should the dashboard expand when new Sensors are added?
     enum class Direction {
         Left,
         Right,
@@ -126,7 +128,7 @@ private:    // data members
 
     // Variables for supporting direct window moving
     bool        m_left_button{false};   // true if the left button is being pressed
-    bool        m_right_button{false};  // true if the left button is being pressed
+    bool        m_right_button{false};  // true if the right button is being pressed
     bool        m_moving{false};
     int         m_left_offset{0};
     int         m_top_offset{0};

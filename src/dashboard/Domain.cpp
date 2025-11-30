@@ -57,7 +57,7 @@ void Domain::slot_housekeeping()
     // value.  Any that have been offline for more than N seconds get
     // deleted.  (Deletion is delayed this way so the user sees a brief
     // visual cue that a Sensor has gone offline instead of relying
-    // only on the log.
+    // only on the log.)
 
     QStringList names_to_delete;
     auto now = QDateTime::currentDateTime();

@@ -21,22 +21,24 @@ Dialog::Dialog(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::Dialog)
 {
-    // std::random_device rd;
-    // std::mt19937 rd_mt(rd());
-    // std::uniform_int_distribution<unsigned long long> r(
-    //         std::numeric_limits<std::uint64_t>::min(),
-    //         std::numeric_limits<std::uint64_t>::max()
-    //     );
+#if 0
+    std::random_device rd;
+    std::mt19937 rd_mt(rd());
+    std::uniform_int_distribution<unsigned long long> r(
+            std::numeric_limits<std::uint64_t>::min(),
+            std::numeric_limits<std::uint64_t>::max()
+        );
 
     // Check for collisions with 64-bit integers
-    // auto map = QMap<unsigned long long, bool>();
-    // for(int i = 0;i < 10000000;++i)
-    // {
-    //     auto i1{r(rd_mt)};
-    //     if(map.contains(i1))
-    //         break;
-    //     map[i1] = true;
-    // }
+    auto map = QMap<unsigned long long, bool>();
+    for(int i = 0;i < 10000000;++i)
+    {
+        auto i1{r(rd_mt)};
+        if(map.contains(i1))
+            break;
+        map[i1] = true;
+    }
+#endif
 
     ui->setupUi(this);
 
@@ -54,16 +56,6 @@ Dialog::Dialog(QWidget *parent)
     ui->check_AutoStart->setVisible(false);
 #endif
 
-    // insert a menu bar
-    // auto myMenuBar = new QMenuBar(this);
-    // auto fileMenu = myMenuBar->addMenu("File");
-
-    // auto quitAction = new QAction(QIcon(":/images/Quit.png"), tr("&Quit"), this);
-    // fileMenu->addAction(quitAction);
-    // connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
-
-    // ui->verticalLayout->insertWidget(0, myMenuBar);
-
     m_quit_action = new QAction(QIcon(":/images/Quit.png"), tr("&Quit"), this);
     connect(m_quit_action, &QAction::triggered, this, &Dialog::slot_quit);
 
@@ -80,8 +72,6 @@ Dialog::Dialog(QWidget *parent)
     connect(ui->radio_Direction_UpLeft, &QRadioButton::clicked, this, &Dialog::slot_direction_upleft);
     connect(ui->radio_Direction_DownRight, &QRadioButton::clicked, this, &Dialog::slot_direction_downright);
 
-    // QPushButton* cancel_button = ui->buttonBox->button(QDialogButtonBox::Cancel);
-    // cancel_button->setVisible(false);
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &Dialog::slot_accept_settings);
     connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &Dialog::slot_reject_settings);
 
@@ -357,9 +347,6 @@ void Dialog::slot_multicast_group_join()
         m_multicast_sender.clear();
         m_multicast_receiver.clear();
         m_dashboard.clear();
-
-        // QPushButton* ok_button = ui->buttonBox->button(QDialogButtonBox::Ok);
-        // ok_button->setEnabled(true);
     }
     else
     {
@@ -411,7 +398,7 @@ void Dialog::slot_multicast_group_join()
         m_multicast_receiver.reset(new Receiver(group_port, ipv4_multcast_group, ipv6_multcast_group, this));
         connect(m_multicast_receiver.data(), &Receiver::signal_datagram_available, this, &Dialog::slot_process_peer_event);
 
-        // Request an update from any Collectors not running in detect-offline mode
+        // Request an update from any Collectors in the multicast group
         auto dashboard_online = QString("{ \"dashboard_id\" : \"%1\", \"action\" : \"initialize\" }")
             .arg(reinterpret_cast<qint64>(this));
         m_multicast_sender->send_datagram(dashboard_online.toUtf8());

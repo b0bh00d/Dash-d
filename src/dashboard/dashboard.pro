@@ -40,7 +40,6 @@ HEADERS += \
     ../common/network/Sender.h \
     Dashboard.h \
     Domain.h \
-    Packet.h \
     Sensor.h \
     Dialog.h
 

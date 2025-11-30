@@ -14,7 +14,7 @@
 //
 // A Sensor is concered with the state of an asset or resource.  In practice,
 // a Sensor is a program of some type running on a computer system, reporting
-// the state of an asset or resource on a regular basis.
+// the state of an asset or resource when something interesting happens.
 //
 //---------------------------------------------------------------------------
 
@@ -33,7 +33,6 @@ public:
     SharedTypes::SensorState     state() const { return m_state; }
     const QString&  message() const { return m_message; }
     QDateTime       last_update() const { return m_last_update; }
-    // qint64          average_update() const { return m_update_count ? m_update_deltas / m_update_count : m_update_count; }
 
     void            set_state(SharedTypes::SensorState state, const QString& message = QString());
     void            set_update(const QDateTime& stamp) { m_last_update = stamp; }

@@ -77,7 +77,6 @@ void Dashboard::slot_housekeeping()
     }
 }
 
-// https://forum.qt.io/topic/162168/how-to-round-the-corners-of-a-frameless-qwidget-when-also-applying-acrylic-effects/8
 void Dashboard::paintEvent(QPaintEvent* /*event*/)
 {
     // Keep the endcaps "pill" shaped regardless of the width/height
@@ -467,7 +466,7 @@ void Dashboard::slot_add_sensor_animation_complete()
 
 void Dashboard::slot_animate_del()
 {
-    // Deleting a sensor is done a in reverse from adding because we want to visually
+    // Deleting a sensor is done in reverse from adding because we want to visually
     // remove the avatar from the window first, and THEN animate the window collapsing.
 
     const int w = (m_orientation == Orientation::Vertical) ? m_current_dim.width() : m_sensor_size * m_labels.count();

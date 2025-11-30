@@ -8,8 +8,6 @@
 
 #include "Sensor.h"
 
-// The Domain class represents a single domain with one or more Sensors.
-
 constexpr int offline_timeout =       10 /* seconds */ * 1000 /* to milliseconds */;
 constexpr int housekeeping_interval = 5                * 1000;
 
@@ -24,6 +22,7 @@ constexpr int housekeeping_interval = 5                * 1000;
 class Domain : public QObject
 {
     Q_OBJECT
+
 public:
     explicit Domain(std::uint64_t id, const QString& name, QObject *parent = nullptr);
     ~Domain();
@@ -46,7 +45,7 @@ signals:
 private slots:
     void        slot_housekeeping();
 
-private:    // typedefs
+private:    // typedefs and enums
     using SensorMap = QMap<QString, SensorPtr>;
     using TimerPtr = QSharedPointer<QTimer>;
 
