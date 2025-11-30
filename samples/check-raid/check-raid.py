@@ -20,19 +20,21 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from typing import Iterator, Tuple
 from collections.abc import Mapping
 
-class SensorStates:
+class States:
     NAMES=["healthy", "poor", "critical", "deceased", "offline"]
     HEALTHY, POOR, CRITICAL, DECEASED, OFFLINE = range(5)
 
-class RaidLevels:
-    NAMES=["linear", "raid0", "raid1", "raid4", "raid5", "raid6", "raid10", "multipath", "faulty", "container"]
+class Levels:
+    PERSONALITIES=["linear", "raid0", "raid1", "raid4", "raid5", "raid6", "raid10", "multipath", "faulty", "container"]
     LINUEAR, RAID0, RAID1, RAID4, RAID5, RAID6, RAID10, MULTIPATH, FAULTY, CONTAINER = range(10)
 
-    # The list of RAID types that this script currently supports
-    SUPPORTED_RAIDS=["raid0", "raid1", "raid5"]
+    # The list of RAID types that this script does not support
+    UNSUPPORTED_RAIDS=["linear", "raid4", "raid6", "multipath", "faulty", "container"]
+
+class MdStat:
+    STATE, PERSONALITY, MEMBERS = range(3)
 
 def construct_report(device: str, state: str, msg: str = "") -> Tuple[str, Mapping[str, str]]:
-    """ Construct the Sensor event report file """
     sensor_name = f"raid_monitor_{device}"
     sensor_filename = f"{device}.json"
 
@@ -40,8 +42,7 @@ def construct_report(device: str, state: str, msg: str = "") -> Tuple[str, Mappi
             "sensor_state" : state,
             "sensor_message" :  msg })
 
-def find_raids() -> Iterator[Tuple[str, int]]:
-    """ Locate all active arrays on the local system """
+def find_raids() -> Iterator[str]:
     data = open('/proc/mdstat', 'r').readlines()
     device_re = re.compile(r'^(md\d+) \: (.+)')
 
@@ -49,12 +50,17 @@ def find_raids() -> Iterator[Tuple[str, int]]:
         line = line.strip()
         result = device_re.search(line)
         if result:
-            items = result.group(2).split()
-            if (items[0] == "active") and (items[1] in RaidLevels.SUPPORTED_RAIDS):
-                yield (result.group(1), RaidLevels.NAMES.index(items[1]))
+            md_items = result.group(2).split()
+            md_members: list[str] = []
+            for member in md_items[MdStat.MEMBERS:]:
+                result2 = re.search(r'(\w+)\[.+?\]', member)
+                if result2:
+                    md_members.append(result2.group(1))
+            if (md_items[MdStat.STATE] == "active") and \
+               (md_items[MdStat.PERSONALITY] not in Levels.UNSUPPORTED_RAIDS):
+                yield (result.group(1), Levels.PERSONALITIES.index(md_items[MdStat.PERSONALITY]), md_members)
 
-def process_raids(sensor_path: str, test_mode: bool) -> int:
-    """ Apply hueristics to each RAID to determine its health """
+def process_raids(sensor_path: str, test_mode: bool) -> None:
     raid_devices_re = re.compile(r'Raid Devices : (\d+)')
     total_devices_re = re.compile(r'Total Devices : (\d+)')
     failed_devices_re = re.compile(r'Failed Devices : (\d+)')
@@ -78,48 +84,47 @@ def process_raids(sensor_path: str, test_mode: bool) -> int:
 
         failed_devices = 0
         if raid_devices != total_devices:
-            result = failed_devices_re.search(output)
+            result = failed_re.search(output)
             assert result is not None, "ERROR: Failed to locate 'Failed devices' in output!"
             failed_devices = int(result.group(1))
 
-        raid = RaidLevels.NAMES[device[1]].upper()
+        raid = Levels.PERSONALITIES[device[1]].upper()
 
-        report_data: Tuple[str, Mapping[str, str]] = ("", {})
+        report_data: Tuple[str, Mapping[str, str]] = ()
         if failed_devices > 0:
             msg = f"{raid} '{device[0]}' is reporting {failed_devices}/{raid_devices} failing RAID members."
             match device[1]:
-                case RaidLevels.RAID0:
+                case Levels.RAID0:
                     # RAID0 is striped
                     # The loss of ANY member is fatal
-                    report_data = construct_report(device[0], SensorStates.NAMES[SensorStates.DECEASED], msg)
-                case RaidLevels.RAID1:
+                    report_data = construct_report(device[0], States.NAMES[States.DECEASED], msg)
+                case Levels.RAID1:
                     # RAID1 is mirrored
                     # The loss of all but two members is poor; the loss of all but one is critical; the loss of all is fatal
-                    state = ""
                     if raid_devices == failed_devices:
-                        state = SensorStates.NAMES[SensorStates.DECEASED]    # array is unusable
+                        state = States.NAMES[States.DECEASED]    # array is unusable
                     elif (raid_devices - failed_devices) >= 2:
-                        state = SensorStates.NAMES[SensorStates.POOR]        # data is safe, mirroring can continue to occur
+                        state = States.NAMES[States.POOR]        # data is safe, mirroring can continue to occur
                     elif (raid_devices - failed_devices) == 1:
-                        state = SensorStates.NAMES[SensorStates.CRITICAL]    # data is safe, but no mirroring is occuring
+                        state = States.NAMES[States.CRITICAL]    # data is safe, but no mirroring is occuring
                     report_data = construct_report(device[0], state, msg)
-                case RaidLevels.RAID5:
+                case Levels.RAID5:
                     # RAID5 is striped with parity
                     # The loss of any single member is critical (accurate data reads can still occur); the loss of 2> is fatal
                     report_data = construct_report(device[0],
-                        SensorStates.NAMES[SensorStates.DECEASED] if failed_devices > 1 else SensorStates.NAMES[SensorStates.CRITICAL],
+                        States.NAMES[States.DECEASED] if failed_devices > 1 else States.NAMES[States.CRITICAL],
                          msg)
                 case _:
-                    assert False, "ERROR: Unsupported RAID type '{raid}'"
+                    assert false, "ERROR: Unsupported RAID type '{raid}'"
         else:
             # operating normally
             msg = f"{raid} '{device[0]}' reports {raid_devices}/{total_devices} members operating normally."
-            report_data = construct_report(device[0], SensorStates.NAMES[SensorStates.HEALTHY], msg)
+            report_data = construct_report(device[0], States.NAMES[States.HEALTHY], msg)
 
-        assert len(report_data[0]) > 0, "ERROR: Failed to construct report data!"
+        assert len(report_data) > 0, "ERROR: Failed to construct report data!"
 
         if test_mode:
-            print(f"{report_data[0]}: {json.dumps(report_data[1])}")
+            print(f"{report_data[0]}.json: {json.dumps(report_data[1])}")
         else:
             with open(os.path.join(sensor_path, report_data[0]), 'w') as f:
                 f.write(json.dumps(report_data[1]))
