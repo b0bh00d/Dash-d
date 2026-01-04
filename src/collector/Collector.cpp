@@ -458,7 +458,13 @@ bool Collector::process_sensor_update(const QString& file, QDateTime last_modifi
         {
             // The JSON doc did not load--it could be empty, or it could be partial.
             // We'll leave it alone for now, and try to process it on the next event.
-            qWarning() << tr("Failed to load Sensor data file: \"") << file << "\": " << error.errorString();
+            qWarning() << tr("Failed to load Sensor data file: \"") << file << "\": " << error.errorString() << " (" << error.offset << ")";
+            if(!data.isEmpty())
+            {
+                qWarning() << data;
+                QString line('-');
+                qWarning() << line.repeated(error.offset-1) << "^";
+            }
         }
     }
 

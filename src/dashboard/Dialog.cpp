@@ -478,6 +478,7 @@ void Dialog::slot_process_peer_event(const QByteArray& datagram)
                     break;
 
                 case SharedTypes::MessageType::Offline:
+                    // TODO: Multiple Sensors closing at the same time on the same Domain cause the dashboard to crash.
                     assert(object.contains("sensor_name"));
                     // Sensor has gone offline
                     {
